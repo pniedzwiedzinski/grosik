@@ -41,7 +41,8 @@ export const parseCsv = (
   const separator = source === 'bookkeeping' ? '\t' : ',';
   
   // Parse headers using the robust line parser
-  const rawHeaders = parseCsvLineWithQuotes(lines[0], separator).map(h => h.toLowerCase());
+  const rawHeaders = parseCsvLineWithQuotes(lines[0], separator).map(h => h.toLowerCase().replace(/^"|"$/g, ''));
+
 
   let dateIndex = -1;
   let descriptionPart1Index = -1; 
@@ -111,14 +112,15 @@ export const parseCsv = (
       let amount: number;
       if (source === 'bookkeeping') {
         // Bookkeeping uses dot as decimal separator, or sometimes no decimal part
-        const incomeValueStr = values[incomeIndex]?.trim().replace(',', '.') || '0'; 
-        const expenseValueStr = values[expenseIndex]?.trim().replace(',', '.') || '0';
+        // also handles potential spaces as thousand separators
+        const incomeValueStr = values[incomeIndex]?.trim().replace(/\s/g, '').replace(',', '.') || '0'; 
+        const expenseValueStr = values[expenseIndex]?.trim().replace(/\s/g, '').replace(',', '.') || '0';
         const incomeValue = parseFloat(incomeValueStr);
         const expenseValue = parseFloat(expenseValueStr);
         amount = incomeValue - expenseValue; 
       } else { // bank
-        // Bank uses comma as decimal separator
-        const amountStr = values[amountIndex]?.trim().replace(',', '.') || '0';
+        // Bank uses comma as decimal separator and might have spaces as thousand separators
+        const amountStr = values[amountIndex]?.trim().replace(/\s/g, '').replace(',', '.') || '0';
         amount = parseFloat(amountStr);
       }
       
