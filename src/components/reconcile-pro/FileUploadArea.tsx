@@ -11,7 +11,7 @@ import { UploadCloud, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FileUploadAreaProps {
-  onFilesProcessed: (bankFile: File | null, ziherFile: File | null) => void;
+  onFilesProcessed: (bankFile: File, ziherFile: File) => void;
 }
 
 export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
@@ -40,10 +40,10 @@ export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
   };
 
   const handleSubmit = () => {
-    if (!bankFile && !ziherFile) {
+    if (!bankFile || !ziherFile) {
       toast({
-        title: 'Nie wybrano plików',
-        description: 'Proszę przesłać co najmniej jeden plik CSV do przetworzenia.',
+        title: 'Nie wybrano obu plików',
+        description: 'Proszę przesłać oba pliki CSV (plik z banku oraz plik z Ziher).',
         variant: 'destructive',
       });
       return;

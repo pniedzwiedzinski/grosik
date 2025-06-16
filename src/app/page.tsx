@@ -116,7 +116,7 @@ export default function ReconcileProPage() {
   }, [bankEntries, ziherEntries, filterMode]);
 
 
-  const handleFilesProcessed = async (bankFile: File | null, ziherFile: File | null) => {
+  const handleFilesProcessed = async (bankFile: File, ziherFile: File) => {
     setIsProcessing(true);
     setProgress(0);
 
@@ -126,39 +126,31 @@ export default function ReconcileProPage() {
     let successfullyParsedZiher = false;
 
     try {
-      if (bankFile) {
-        const bankCsvText = await bankFile.text();
-        await updateProgress(10);
-        newBankEntries = parseCsv(bankCsvText, 'bank');
-        successfullyParsedBank = newBankEntries.length > 0;
-        if (bankFile && !successfullyParsedBank) {
-          toast({
-            title: "Problem z plikiem historii z banku",
-            description: `Nie znaleziono wpisów w "${bankFile.name}". Sprawdź format/zawartość pliku.`,
-            variant: "destructive",
-          });
-        }
-        await updateProgress(20);
-      } else {
-        setBankEntries([]); 
+      const bankCsvText = await bankFile.text();
+      await updateProgress(10);
+      newBankEntries = parseCsv(bankCsvText, 'bank');
+      successfullyParsedBank = newBankEntries.length > 0;
+      if (!successfullyParsedBank) {
+        toast({
+          title: "Problem z plikiem historii z banku",
+          description: `Nie znaleziono wpisów w "${bankFile.name}". Sprawdź format/zawartość pliku.`,
+          variant: "destructive",
+        });
       }
-
-      if (ziherFile) {
-        const ziherCsvText = await ziherFile.text();
-        await updateProgress(30);
-        newZiherEntries = parseCsv(ziherCsvText, 'ziher');
-        successfullyParsedZiher = newZiherEntries.length > 0;
-        if (ziherFile && !successfullyParsedZiher) {
-          toast({
-            title: "Problem z plikiem Ziher",
-            description: `Nie znaleziono wpisów w "${ziherFile.name}". Sprawdź format/zawartość pliku.`,
-            variant: "destructive",
-          });
-        }
-        await updateProgress(40);
-      } else {
-        setZiherEntries([]);
+      await updateProgress(20);
+      
+      const ziherCsvText = await ziherFile.text();
+      await updateProgress(30);
+      newZiherEntries = parseCsv(ziherCsvText, 'ziher');
+      successfullyParsedZiher = newZiherEntries.length > 0;
+      if (!successfullyParsedZiher) {
+        toast({
+          title: "Problem z plikiem Ziher",
+          description: `Nie znaleziono wpisów w "${ziherFile.name}". Sprawdź format/zawartość pliku.`,
+          variant: "destructive",
+        });
       }
+      await updateProgress(40);
       
       setSelectedBankEntryIds([]);
       setSelectedZiherEntryIds([]);
@@ -197,8 +189,6 @@ export default function ReconcileProPage() {
            description += ` Automatycznie powiązano ${autoMatchedCount} wpisów.`;
          }
          toast({ title: "Pliki przetworzone", description });
-      } else if (!bankFile && !ziherFile) {
-         toast({ title: "Nie wybrano plików", description: "Proszę przesłać co najmniej jeden plik CSV.", variant: "destructive" });
       }
       
     } catch (error: any) {
@@ -207,8 +197,12 @@ export default function ReconcileProPage() {
         description: error.message || "Nie można sparsować plików CSV.",
         variant: "destructive",
       });
-      setBankEntries(prev => bankFile && newBankEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bank') ? prev : sortEntriesByDate(newBankEntries)); 
-      setZiherEntries(prev => ziherFile && newZiherEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('ziher') ? prev : sortEntriesByDate(newZiherEntries));
+      // Preserve successfully parsed entries if one file caused a general error
+      // but was itself not the source of the parsing issue (e.g. a network error after one file parsed)
+      // This condition is complex and might need refinement based on actual error types.
+      setBankEntries(prev => successfullyParsedBank ? sortEntriesByDate(newBankEntries) : (newBankEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bank') ? prev : sortEntriesByDate(newBankEntries)) );
+      setZiherEntries(prev => successfullyParsedZiher ? sortEntriesByDate(newZiherEntries) : (newZiherEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('ziher') ? prev : sortEntriesByDate(newZiherEntries)) );
+
     } finally {
       await updateProgress(100);
       setTimeout(() => setIsProcessing(false), 500); 
