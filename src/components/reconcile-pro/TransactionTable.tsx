@@ -27,7 +27,7 @@ interface TransactionTableProps {
   matchGroups: MatchGroup[];
 }
 
-const statusTranslations: Record<string, string> = { // Allow string for dynamic statuses like 'matched-discrepancy' if used
+const statusTranslations: Record<string, string> = { 
   matched: 'Powiązano',
   unmatched: 'Niepowiązane',
   candidate: 'Kandydat',
@@ -46,7 +46,7 @@ export function TransactionTable({
   const getRowStyle = (entry: TransactionEntry) => {
     if (entry.status === 'matched' && entry.matchId) {
       const match = matchGroups.find(mg => mg.id === entry.matchId);
-      if (match?.isDiscrepancy) {
+      if (match && match.isDiscrepancy) { // Ensure match is found before checking isDiscrepancy
         return 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-200/50 dark:hover:bg-yellow-800/50';
       }
       return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700 hover:bg-green-200/50 dark:hover:bg-green-800/50';
@@ -65,19 +65,18 @@ export function TransactionTable({
   const getAmountDisplay = (entry: TransactionEntry) => {
     if (entry.status === 'matched' && entry.matchId) {
       const match = matchGroups.find(mg => mg.id === entry.matchId);
-      if (match?.isDiscrepancy) {
+      if (match && match.isDiscrepancy) {
         const otherSourceSum = entry.source === 'bank' ? match.ziherSumInMatch : match.bankSumInMatch;
         const otherSourceLabel = entry.source === 'bank' ? 'Ziher' : 'Bank';
-        if (typeof otherSourceSum === 'number') {
-          return (
-            <>
-              {formatCurrency(entry.amount)}
-              <span className="text-xs text-muted-foreground ml-1">
-                ({otherSourceLabel}: {formatCurrency(otherSourceSum)})
-              </span>
-            </>
-          );
-        }
+        // Since bankSumInMatch and ziherSumInMatch are non-optional in MatchGroup, no need for typeof check
+        return (
+          <>
+            {formatCurrency(entry.amount)}
+            <span className="text-xs text-muted-foreground ml-1">
+              ({otherSourceLabel}: {formatCurrency(otherSourceSum)})
+            </span>
+          </>
+        );
       }
     }
     return formatCurrency(entry.amount);
@@ -124,7 +123,7 @@ export function TransactionTable({
                       checked={selectedIds.includes(entry.id)}
                       onCheckedChange={(checked) => onRowSelect(entry.id, !!checked)}
                       aria-label={`Zaznacz transakcję ${entry.description}`}
-                      disabled={entry.status === 'matched' && title.toLowerCase().includes("niepowiązane")} // Prevent selecting matched items from "Unmatched" tab if they somehow appear
+                      disabled={entry.status === 'matched' && title.toLowerCase().includes("niepowiązane")} 
                     />
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{entry.date}</TableCell>

@@ -5,8 +5,8 @@ export const autoMatchEntries = (
   bankEntries: TransactionEntry[],
   ziherEntries: TransactionEntry[]
 ): { updatedBankEntries: TransactionEntry[]; updatedZiherEntries: TransactionEntry[]; newMatches: MatchGroup[] } => {
-  const updatedBankEntries = bankEntries.map(entry => ({ ...entry, status: entry.status === 'matched' ? 'matched' : 'unmatched', matchId: entry.status === 'matched' ? entry.matchId : undefined }));
-  const updatedZiherEntries = ziherEntries.map(entry => ({ ...entry, status: entry.status === 'matched' ? 'matched' : 'unmatched', matchId: entry.status === 'matched' ? entry.matchId : undefined }));
+  const updatedBankEntries = bankEntries.map(entry => ({ ...entry, status: entry.status === 'matched' ? 'matched' : 'unmatched', matchId: entry.status === 'matched' ? entry.matchId : undefined, matchedEntryDetails: entry.matchedEntryDetails || [] }));
+  const updatedZiherEntries = ziherEntries.map(entry => ({ ...entry, status: entry.status === 'matched' ? 'matched' : 'unmatched', matchId: entry.status === 'matched' ? entry.matchId : undefined, matchedEntryDetails: entry.matchedEntryDetails || [] }));
   const newMatches: MatchGroup[] = [];
 
   const ziherEntriesMap = new Map<string, TransactionEntry[]>();
@@ -44,7 +44,7 @@ export const autoMatchEntries = (
             ziherEntryIds: [ziherEntry.id],
             bankSumInMatch: bankEntry.amount,
             ziherSumInMatch: ziherEntry.amount,
-            isDiscrepancy: bankEntry.amount.toFixed(2) !== ziherEntry.amount.toFixed(2), // For auto-matches, sums are typically equal by definition of the match
+            isDiscrepancy: bankEntry.amount.toFixed(2) !== ziherEntry.amount.toFixed(2),
           });
 
           if (potentialMatches.length === 0) {
@@ -139,14 +139,14 @@ export const unmatchEntriesByMatchId = (
 ): { updatedBankEntries: TransactionEntry[]; updatedZiherEntries: TransactionEntry[] } => {
   const updatedBankEntries = allBankEntries.map(entry => {
     if (entry.matchId === matchIdToUnmatch) {
-      return { ...entry, status: 'unmatched' as 'unmatched', matchId: undefined, matchedEntryDetails: undefined };
+      return { ...entry, status: 'unmatched' as 'unmatched', matchId: undefined, matchedEntryDetails: [] };
     }
     return entry;
   });
 
   const updatedZiherEntries = allZiherEntries.map(entry => {
     if (entry.matchId === matchIdToUnmatch) {
-      return { ...entry, status: 'unmatched' as 'unmatched', matchId: undefined, matchedEntryDetails: undefined };
+      return { ...entry, status: 'unmatched' as 'unmatched', matchId: undefined, matchedEntryDetails: [] };
     }
     return entry;
   });
