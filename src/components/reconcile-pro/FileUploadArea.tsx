@@ -76,7 +76,7 @@ export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
     <Card className="mb-6 container mx-auto shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl font-headline">Sprawdź rozliczenie</CardTitle>
-        <CardDescription>Gdzieś brakuje grosika? Albo kilku? Prześlij historię z banku i plik ZiHeRa w formacie CSV, żeby sprawdzić gdzie się niezgadzają.</CardDescription>
+        <CardDescription>Gdzieś brakuje grosika? Albo kilku? Wgraj historię z banku i plik ZiHeRa w formacie CSV, żeby sprawdzić gdzie się niezgadzają - wszystko jest przetwarzane na twoim urządzeniu, offline.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

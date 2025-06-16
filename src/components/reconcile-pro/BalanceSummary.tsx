@@ -35,7 +35,7 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference, onReset, isP
           className="text-muted-foreground hover:text-foreground"
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          Wgraj ponownie pliki
+          Wczytaj ponownie pliki
         </Button>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
