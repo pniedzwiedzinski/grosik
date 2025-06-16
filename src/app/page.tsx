@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileWarning } from 'lucide-react';
+import { FileWarning, CheckCircle2 } from 'lucide-react';
 
 type FilterMode = 'all' | 'income' | 'expenses';
 
@@ -197,9 +197,6 @@ export default function ReconcileProPage() {
         description: error.message || "Nie można sparsować plików CSV.",
         variant: "destructive",
       });
-      // Preserve successfully parsed entries if one file caused a general error
-      // but was itself not the source of the parsing issue (e.g. a network error after one file parsed)
-      // This condition is complex and might need refinement based on actual error types.
       setBankEntries(prev => successfullyParsedBank ? sortEntriesByDate(newBankEntries) : (newBankEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bank') ? prev : sortEntriesByDate(newBankEntries)) );
       setZiherEntries(prev => successfullyParsedZiher ? sortEntriesByDate(newZiherEntries) : (newZiherEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('ziher') ? prev : sortEntriesByDate(newZiherEntries)) );
 
@@ -357,9 +354,25 @@ export default function ReconcileProPage() {
     const actualSource = entry.source; 
 
     if (actualSource === 'bank') {
-      setSelectedBankEntryIds(prev => isSelected ? [...prev, id] : prev.filter(item => item !== id));
+      setSelectedBankEntryIds(prev => {
+        const newSet = new Set(prev);
+        if (isSelected) {
+          newSet.add(id);
+        } else {
+          newSet.delete(id);
+        }
+        return Array.from(newSet);
+      });
     } else { 
-      setSelectedZiherEntryIds(prev => isSelected ? [...prev, id] : prev.filter(item => item !== id));
+      setSelectedZiherEntryIds(prev => {
+        const newSet = new Set(prev);
+        if (isSelected) {
+          newSet.add(id);
+        } else {
+          newSet.delete(id);
+        }
+        return Array.from(newSet);
+      });
     }
   };
   
@@ -507,6 +520,7 @@ export default function ReconcileProPage() {
                 isAllSelected={isAllBankSelected}
                 onToggleSelectAll={handleToggleSelectAllBank}
                 canSelectAny={displayedBankEntries.length > 0}
+                isGloballyReconciled={allEntriesAreGloballyMatched && displayedBankEntries.length === 0}
                 searchQuery={bankSearchQuery}
                 onSearchQueryChange={setBankSearchQuery}
                 searchPlaceholder="Szukaj w banku..."
@@ -523,6 +537,7 @@ export default function ReconcileProPage() {
                 isAllSelected={isAllZiherSelected}
                 onToggleSelectAll={handleToggleSelectAllZiher}
                 canSelectAny={displayedZiherEntries.length > 0}
+                isGloballyReconciled={allEntriesAreGloballyMatched && displayedZiherEntries.length === 0}
                 searchQuery={ziherSearchQuery}
                 onSearchQueryChange={setZiherSearchQuery}
                 searchPlaceholder="Szukaj w Ziher..."
