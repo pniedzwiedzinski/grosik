@@ -94,7 +94,7 @@ export function ActionToolbar({
             size="sm"
           >
             <Link2 className="mr-2 h-4 w-4" />
-            Powiąż Wybrane Ręcznie
+            Dopasuj Wybrane Ręcznie
           </Button>
           <Button
             onClick={onUnmatch}

@@ -186,7 +186,7 @@ export default function ReconcileProPage() {
       if (successfullyParsedBank || successfullyParsedZiher) {
          let description = "Pliki CSV zostały sparsowane.";
          if (newBankEntries.length > 0 && newZiherEntries.length > 0) {
-           description += ` Automatycznie powiązano ${autoMatchedCount} wpisów.`;
+           description += ` Automatycznie dopasowano ${autoMatchedCount} wpisów.`;
          }
          toast({ title: "Pliki przetworzone", description });
       }
@@ -226,11 +226,11 @@ export default function ReconcileProPage() {
 
     if (newMatch) {
       setMatchGroups(prev => [...prev, newMatch]);
-      toast({ title: "Ręczne powiązanie zakończone sukcesem", description: "Wybrane wpisy zostały powiązane." });
+      toast({ title: "Ręczne dopasowanie zakończone sukcesem", description: "Wybrane wpisy zostały dopasowane." });
     } else {
        toast({ 
-         title: "Ręczne powiązanie nie powiodło się", 
-         description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niepowiązane'.", 
+         title: "Ręczne dopasowanie nie powiodło się", 
+         description: "Nie można dopasować. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niedopasowane'.", 
          variant: "destructive"
        });
     }
@@ -253,8 +253,8 @@ export default function ReconcileProPage() {
 
     if (bankEntriesToMatch.length === 0 || ziherEntriesToMatch.length === 0) {
       toast({ 
-         title: "Ręczne powiązanie nie powiodło się", 
-         description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł (Bank i Ziher), nie są puste i wszystkie są 'niepowiązane'.", 
+         title: "Ręczne dopasowanie nie powiodło się", 
+         description: "Nie można dopasować. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł (Bank i Ziher), nie są puste i wszystkie są 'niedopasowane'.", 
          variant: "destructive"
        });
       await updateProgress(100); 
@@ -292,7 +292,7 @@ export default function ReconcileProPage() {
     });
 
     if (matchIdsToUnmatch.size === 0) {
-      toast({ title: "Nie wybrano powiązania", description: "Proszę wybrać powiązane wpisy, aby je rozłączyć.", variant: "destructive" });
+      toast({ title: "Nie wybrano dopasowania", description: "Proszę wybrać dopasowane wpisy, aby je rozłączyć.", variant: "destructive" });
       await updateProgress(100);
       setTimeout(() => setIsProcessing(false), 500);
       return;
@@ -488,13 +488,13 @@ export default function ReconcileProPage() {
         {showTransactionData && !isProcessing && (
           <Tabs defaultValue="unmatched" className="mt-6 w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="unmatched">Niepowiązane</TabsTrigger>
+              <TabsTrigger value="unmatched">Niedopasowane</TabsTrigger>
               <TabsTrigger value="bank">Bank</TabsTrigger>
               <TabsTrigger value="ziher">Ziher</TabsTrigger>
             </TabsList>
             <TabsContent value="unmatched" className="mt-4 space-y-4">
               <TransactionTable
-                title="Niepowiązane Wpisy"
+                title="Niedopasowane Wpisy"
                 entries={unmatchedCombinedEntries} 
                 selectedIds={[...selectedBankEntryIds, ...selectedZiherEntryIds]} 
                 onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
@@ -506,7 +506,7 @@ export default function ReconcileProPage() {
                 isGloballyReconciled={allEntriesAreGloballyMatched}
                 searchQuery={unmatchedSearchQuery}
                 onSearchQueryChange={setUnmatchedSearchQuery}
-                searchPlaceholder="Szukaj w niepowiązanych..."
+                searchPlaceholder="Szukaj w niedopasowanych..."
               />
             </TabsContent>
             <TabsContent value="bank" className="mt-4 space-y-4">
@@ -564,7 +564,7 @@ export default function ReconcileProPage() {
               Suma wybranych wpisów bankowych ({formatCurrency(mismatchConfirmData?.bankSum || 0)}) 
               różni się od sumy wybranych wpisów Ziher ({formatCurrency(mismatchConfirmData?.ziherSum || 0)}).
               <br />
-              Czy na pewno chcesz je powiązać?
+              Czy na pewno chcesz je dopasować?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -583,7 +583,7 @@ export default function ReconcileProPage() {
                   mismatchConfirmData.ziherSum
                 );
               }
-            }}>Powiąż mimo to</AlertDialogAction>
+            }}>Dopasuj mimo to</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

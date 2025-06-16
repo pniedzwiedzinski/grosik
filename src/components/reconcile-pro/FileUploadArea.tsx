@@ -84,7 +84,7 @@ export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
           <FileInput id="ziher-csv" label="Plik CSV z ZiHeRa" file={ziherFile} onChange={(e) => handleFileChange(e, 'ziher')} />
         </div>
         <Button onClick={handleSubmit} className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-          Przetwórz Pliki
+          Otwórz Pliki
         </Button>
       </CardContent>
     </Card>
