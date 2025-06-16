@@ -282,7 +282,7 @@ export default function ReconcileProPage() {
         )}
       </main>
       <footer className="py-4 border-t border-border text-center text-sm text-muted-foreground">
-        ReconcilePro &copy; {new Date().getFullYear()}
+        Grosik &copy; {new Date().getFullYear()}
       </footer>
     </div>
   );

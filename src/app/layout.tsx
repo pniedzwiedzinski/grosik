@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'ReconcilePro',
+  title: 'Grosik',
   description: 'Streamline your financial reconciliation process.',
 };
 
