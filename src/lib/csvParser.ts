@@ -102,7 +102,9 @@ export const parseCsv = (
             const day = parts[0];
             const month = parts[1];
             const year = parts[2];
-            if (day.length === 2 && month.length === 2 && year.length === 4 && !isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
+            // Check if parts are numbers and have expected lengths
+            if (day.length === 2 && month.length === 2 && year.length === 4 && 
+                !isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
               parsedDate = `${year}-${month}-${day}`;
             } else {
               continue; 
@@ -116,18 +118,27 @@ export const parseCsv = (
       } else { // source === 'ziher'
         const rawDateValue = values[dateIndex]?.trim();
         if (rawDateValue) {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(rawDateValue)) {
-            const [yearNum, monthNum, dayNum] = rawDateValue.split('-').map(Number);
-            if (yearNum > 1900 && yearNum < 3000 && monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) { // Basic sanity check
-                 parsedDate = rawDateValue;
+          if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(rawDateValue)) { // More flexible regex for YYYY-M-D or YYYY-MM-DD
+            const dateParts = rawDateValue.split('-');
+            if (dateParts.length === 3) {
+              const year = parseInt(dateParts[0], 10);
+              const month = parseInt(dateParts[1], 10);
+              const day = parseInt(dateParts[2], 10);
+
+              if (year > 1900 && year < 3000 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                // Normalize to YYYY-MM-DD
+                parsedDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+              } else {
+                continue; // Invalid date components
+              }
             } else {
-                continue;
+                 continue; // Split did not result in 3 parts
             }
           } else {
-            continue; 
+            continue; // Regex for YYYY-M-D or YYYY-MM-DD failed
           }
         } else {
-            continue;
+            continue; // Empty date field
         }
       }
       
@@ -146,6 +157,8 @@ export const parseCsv = (
         let processedIncomeStr = '0';
         if (typeof rawIncomeField === 'string' && rawIncomeField.trim() !== '') {
             processedIncomeStr = rawIncomeField.trim().replace(/\s/g, '').replace(',', '.');
+        } else if (typeof rawIncomeField === 'number') { // Handle if it's already a number
+            processedIncomeStr = rawIncomeField.toString().replace(',', '.');
         }
         const incomeValue = parseFloat(processedIncomeStr);
 
@@ -153,6 +166,8 @@ export const parseCsv = (
         let processedExpenseStr = '0';
         if (typeof rawExpenseField === 'string' && rawExpenseField.trim() !== '') {
             processedExpenseStr = rawExpenseField.trim().replace(/\s/g, '').replace(',', '.');
+        } else if (typeof rawExpenseField === 'number') {
+            processedExpenseStr = rawExpenseField.toString().replace(',', '.');
         }
         const expenseValue = parseFloat(processedExpenseStr);
         amount = incomeValue - expenseValue; 
@@ -161,6 +176,8 @@ export const parseCsv = (
         let processedAmountStr = '0'; 
         if (typeof rawAmountField === 'string' && rawAmountField.trim() !== '') {
             processedAmountStr = rawAmountField.trim().replace(/\s/g, '').replace(',', '.');
+        } else if (typeof rawAmountField === 'number') {
+             processedAmountStr = rawAmountField.toString().replace(',', '.');
         }
         amount = parseFloat(processedAmountStr);
       }
@@ -176,7 +193,7 @@ export const parseCsv = (
         amount,
         source,
         status: 'unmatched',
-        originalRowData: parseCsvLineWithQuotes(lines[i], separator),
+        originalRowData: parseCsvLineWithQuotes(lines[i], separator), // Re-parse or store original values for debugging if needed
         matchedEntryDetails: [],
       });
     } catch (error: any) {
