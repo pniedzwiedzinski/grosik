@@ -11,13 +11,12 @@ import { ActionToolbar } from '@/components/reconcile-pro/ActionToolbar';
 import { BalanceSummary } from '@/components/reconcile-pro/BalanceSummary';
 import { TransactionTable } from '@/components/reconcile-pro/TransactionTable';
 import { TransactionFilter } from '@/components/reconcile-pro/TransactionFilter';
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileWarning, Search } from 'lucide-react';
+import { FileWarning } from 'lucide-react';
 
 type FilterMode = 'all' | 'income' | 'expenses';
 
@@ -459,11 +458,11 @@ export default function ReconcileProPage() {
             <ActionToolbar
               onManualMatch={handleManualMatch}
               onUnmatch={handleUnmatch}
-              isProcessing={isProcessing}
               selectedBankEntryIds={selectedBankEntryIds}
               selectedZiherEntryIds={selectedZiherEntryIds}
               bankEntries={bankEntries}
               ziherEntries={ziherEntries}
+              isProcessing={isProcessing}
               onDeselectAll={handleDeselectAll}
             />
           </>
@@ -487,16 +486,6 @@ export default function ReconcileProPage() {
               <TabsTrigger value="ziher">Ziher</TabsTrigger>
             </TabsList>
             <TabsContent value="unmatched" className="mt-4 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Szukaj w niepowiązanych..."
-                  value={unmatchedSearchQuery}
-                  onChange={(e) => setUnmatchedSearchQuery(e.target.value)}
-                  className="w-full pl-10"
-                />
-              </div>
               <TransactionTable
                 title="Niepowiązane Wpisy"
                 entries={unmatchedCombinedEntries} 
@@ -508,19 +497,12 @@ export default function ReconcileProPage() {
                 onToggleSelectAll={handleToggleSelectAllUnmatched}
                 canSelectAny={selectableUnmatchedEntries.length > 0}
                 isGloballyReconciled={allEntriesAreGloballyMatched}
+                searchQuery={unmatchedSearchQuery}
+                onSearchQueryChange={setUnmatchedSearchQuery}
+                searchPlaceholder="Szukaj w niepowiązanych..."
               />
             </TabsContent>
             <TabsContent value="bank" className="mt-4 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Szukaj w banku..."
-                  value={bankSearchQuery}
-                  onChange={(e) => setBankSearchQuery(e.target.value)}
-                  className="w-full pl-10"
-                />
-              </div>
               <TransactionTable
                 title="Wpisy Bankowe"
                 entries={displayedBankEntries}
@@ -531,19 +513,12 @@ export default function ReconcileProPage() {
                 isAllSelected={isAllBankSelected}
                 onToggleSelectAll={handleToggleSelectAllBank}
                 canSelectAny={displayedBankEntries.length > 0}
+                searchQuery={bankSearchQuery}
+                onSearchQueryChange={setBankSearchQuery}
+                searchPlaceholder="Szukaj w banku..."
               />
             </TabsContent>
             <TabsContent value="ziher" className="mt-4 space-y-4">
-               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Szukaj w Ziher..."
-                  value={ziherSearchQuery}
-                  onChange={(e) => setZiherSearchQuery(e.target.value)}
-                  className="w-full pl-10"
-                />
-              </div>
               <TransactionTable
                 title="Wpisy Ziher"
                 entries={displayedZiherEntries}
@@ -554,6 +529,9 @@ export default function ReconcileProPage() {
                 isAllSelected={isAllZiherSelected}
                 onToggleSelectAll={handleToggleSelectAllZiher}
                 canSelectAny={displayedZiherEntries.length > 0}
+                searchQuery={ziherSearchQuery}
+                onSearchQueryChange={setZiherSearchQuery}
+                searchPlaceholder="Szukaj w Ziher..."
               />
             </TabsContent>
           </Tabs>

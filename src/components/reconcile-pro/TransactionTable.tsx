@@ -13,10 +13,11 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Info, Banknote, BookOpenText, CheckCircle2 } from 'lucide-react';
+import { Info, Banknote, BookOpenText, CheckCircle2, Search } from 'lucide-react';
 
 interface TransactionTableProps {
   title: string;
@@ -29,6 +30,9 @@ interface TransactionTableProps {
   onToggleSelectAll: () => void;
   canSelectAny: boolean;
   isGloballyReconciled?: boolean;
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  searchPlaceholder: string;
 }
 
 const statusTranslations: Record<string, string> = { 
@@ -49,6 +53,9 @@ export function TransactionTable({
   onToggleSelectAll,
   canSelectAny,
   isGloballyReconciled,
+  searchQuery,
+  onSearchQueryChange,
+  searchPlaceholder,
 }: TransactionTableProps) {
   
   const getRowStyle = (entry: TransactionEntry) => {
@@ -91,12 +98,25 @@ export function TransactionTable({
 
   return (
     <Card className="shadow-lg flex flex-col h-full">
-      <CardHeader>
-        <CardTitle className="text-lg font-headline flex items-center gap-2">
-          {title.toLowerCase().includes('bank') ? <Banknote className="w-5 h-5 text-primary"/> : title.toLowerCase().includes('ziher') ? <BookOpenText className="w-5 h-5 text-primary"/> : <Info className="w-5 h-5 text-primary"/> }
-          {title}
-          <Badge variant="secondary" className="ml-2">{entries.length}</Badge>
-        </CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 md:px-6">
+        <div className="flex items-center gap-2">
+            {title.toLowerCase().includes('bank') ? <Banknote className="w-5 h-5 text-primary"/> : title.toLowerCase().includes('ziher') ? <BookOpenText className="w-5 h-5 text-primary"/> : <Info className="w-5 h-5 text-primary"/> }
+          <CardTitle className="text-lg font-headline">
+            {title}
+          </CardTitle>
+          <Badge variant="secondary">{entries.length}</Badge>
+        </div>
+        <div className="relative ml-auto flex-1 md:grow-0 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+            className="w-full rounded-lg bg-background pl-8 h-9"
+            disabled={isProcessing}
+          />
+        </div>
       </CardHeader>
       <CardContent className="p-0 flex-grow overflow-hidden">
         <ScrollArea className="h-[400px]">
@@ -192,3 +212,4 @@ export function TransactionTable({
     </Card>
   );
 }
+
