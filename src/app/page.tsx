@@ -88,10 +88,35 @@ export default function ReconcileProPage() {
       setSelectedBookkeepingEntryIds([]);
       setMatchGroups([]);
 
-      if (newBankEntries.length > 0 || newBookkeepingEntries.length > 0) {
-        toast({ title: "Files Processed", description: "CSV files have been parsed." });
-      } else {
-        toast({ title: "No Data Processed", description: "Please upload at least one file.", variant: "destructive" });
+      let fileProcessedSuccessfully = false;
+      if (bankFile) {
+        if (newBankEntries.length > 0) {
+          fileProcessedSuccessfully = true;
+        } else {
+          toast({
+            title: "Bank File Issue",
+            description: `No entries found in "${bankFile.name}". Check file format/content.`,
+            variant: "destructive",
+          });
+        }
+      }
+      if (bookkeepingFile) {
+        if (newBookkeepingEntries.length > 0) {
+          fileProcessedSuccessfully = true;
+        } else {
+          toast({
+            title: "Bookkeeping File Issue",
+            description: `No entries found in "${bookkeepingFile.name}". Check file format/content.`,
+            variant: "destructive",
+          });
+        }
+      }
+
+      if (fileProcessedSuccessfully) {
+         toast({ title: "Files Processed", description: "CSV files parsed." });
+      } else if (!bankFile && !bookkeepingFile) {
+         // This case should ideally be prevented by the FileUploadArea button guard
+         toast({ title: "No Files Selected", description: "Please upload at least one CSV file.", variant: "destructive" });
       }
       
     } catch (error: any) {
@@ -100,8 +125,9 @@ export default function ReconcileProPage() {
         description: error.message || "Could not parse CSV files.",
         variant: "destructive",
       });
-      setBankEntries(prev => bankFile ? newBankEntries : prev); 
-      setBookkeepingEntries(prev => bookkeepingFile ? newBookkeepingEntries : prev);
+      // Preserve existing entries if one file fails but the other was processed before error.
+      setBankEntries(prev => bankFile && newBankEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bank') ? prev : newBankEntries); 
+      setBookkeepingEntries(prev => bookkeepingFile && newBookkeepingEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bookkeeping') ? prev : newBookkeepingEntries);
     } finally {
       await updateProgress(100);
       setTimeout(() => setIsProcessing(false), 500); 
@@ -145,7 +171,7 @@ export default function ReconcileProPage() {
     } else {
        toast({ 
          title: "Manual Match Failed", 
-         description: "Could not match selected entries. Ensure you select entries from both bank and bookkeeping sources, and that all selected entries are currently 'unmatched'.", 
+         description: "Could not match. Ensure selections are from different sources and all selected entries are 'unmatched'.", 
          variant: "destructive"
        });
     }
@@ -239,6 +265,8 @@ export default function ReconcileProPage() {
   const canAutoMatch = bankEntries.length > 0 && bookkeepingEntries.length > 0 && (bankEntries.some(e => e.status === 'unmatched') || bookkeepingEntries.some(e => e.status === 'unmatched'));
 
   const showFileUpload = bankEntries.length === 0 && bookkeepingEntries.length === 0;
+  const showTransactionData = bankEntries.length > 0 || bookkeepingEntries.length > 0;
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -255,7 +283,7 @@ export default function ReconcileProPage() {
           </div>
         )}
 
-        {!showFileUpload && !isProcessing && (
+        {showTransactionData && !isProcessing && (
           <>
             <BalanceSummary
               bankTotal={bankTotal}
@@ -285,7 +313,7 @@ export default function ReconcileProPage() {
           </Alert>
         )}
         
-        {!showFileUpload && !isProcessing && (
+        {showTransactionData && !isProcessing && (
           <Tabs defaultValue="unmatched" className="mt-6 w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="unmatched">Unmatched</TabsTrigger>

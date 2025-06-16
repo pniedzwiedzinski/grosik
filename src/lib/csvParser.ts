@@ -40,7 +40,6 @@ export const parseCsv = (
 
   const separator = source === 'bookkeeping' ? '\t' : ',';
   
-  // Parse headers using the robust line parser
   const rawHeaders = parseCsvLineWithQuotes(lines[0], separator).map(h => h.toLowerCase().replace(/^"|"$/g, ''));
 
 
@@ -80,16 +79,15 @@ export const parseCsv = (
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].trim() === '') continue; 
 
-    // Parse data rows using the robust line parser
     const values = parseCsvLineWithQuotes(lines[i], separator);
 
     const maxRequiredIndex = Math.max(
       dateIndex, 
       descriptionPart1Index, 
-      descriptionPart2Index, 
-      amountIndex, 
-      incomeIndex, 
-      expenseIndex
+      descriptionPart2Index > -1 ? descriptionPart2Index : 0, // Ensure not -1 if not present (bank)
+      amountIndex > -1 ? amountIndex : 0, // Ensure not -1 if not present (bookkeeping)
+      incomeIndex > -1 ? incomeIndex : 0, // Ensure not -1 if not present (bank)
+      expenseIndex > -1 ? expenseIndex : 0 // Ensure not -1 if not present (bank)
     );
     
     if (values.length <= maxRequiredIndex) {
@@ -111,17 +109,29 @@ export const parseCsv = (
 
       let amount: number;
       if (source === 'bookkeeping') {
-        // Bookkeeping uses dot as decimal separator, or sometimes no decimal part
-        // also handles potential spaces as thousand separators
-        const incomeValueStr = values[incomeIndex]?.trim().replace(/\s/g, '').replace(',', '.') || '0'; 
-        const expenseValueStr = values[expenseIndex]?.trim().replace(/\s/g, '').replace(',', '.') || '0';
-        const incomeValue = parseFloat(incomeValueStr);
-        const expenseValue = parseFloat(expenseValueStr);
+        let rawIncomeField = values[incomeIndex];
+        let processedIncomeStr = '0';
+        if (typeof rawIncomeField === 'string' && rawIncomeField.trim() !== '') {
+            processedIncomeStr = rawIncomeField.trim().replace(/\s/g, '').replace(',', '.');
+        }
+        const incomeValue = parseFloat(processedIncomeStr);
+
+        let rawExpenseField = values[expenseIndex];
+        let processedExpenseStr = '0';
+        if (typeof rawExpenseField === 'string' && rawExpenseField.trim() !== '') {
+            processedExpenseStr = rawExpenseField.trim().replace(/\s/g, '').replace(',', '.');
+        }
+        const expenseValue = parseFloat(processedExpenseStr);
         amount = incomeValue - expenseValue; 
       } else { // bank
-        // Bank uses comma as decimal separator and might have spaces as thousand separators
-        const amountStr = values[amountIndex]?.trim().replace(/\s/g, '').replace(',', '.') || '0';
-        amount = parseFloat(amountStr);
+        let rawAmountField = values[amountIndex];
+        let processedAmountStr = '0'; 
+        if (typeof rawAmountField === 'string' && rawAmountField.trim() !== '') {
+            processedAmountStr = rawAmountField.trim().replace(/\s/g, '').replace(',', '.');
+        }
+        amount = parseFloat(processedAmountStr);
+        // If processedAmountStr was "" after operations, parseFloat("") is NaN.
+        // If rawAmountField was empty or just whitespace, processedAmountStr is '0', parseFloat('0') is 0.
       }
       
       if (!date || description === '' || isNaN(amount)) {
@@ -136,7 +146,7 @@ export const parseCsv = (
         amount,
         source,
         status: 'unmatched',
-        originalRowData: parseCsvLineWithQuotes(lines[i], separator), // Store raw parsed values
+        originalRowData: parseCsvLineWithQuotes(lines[i], separator),
         matchedEntryDetails: [],
       });
     } catch (error: any) {
