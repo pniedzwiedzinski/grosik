@@ -1,60 +1,103 @@
 
 import type { TransactionEntry, MatchGroup } from '@/types/reconciliation';
 
+// Helper function to calculate absolute difference in days between two date strings
+const calculateDateDifferenceInDays = (dateStr1: string, dateStr2: string): number => {
+  const date1 = new Date(dateStr1).getTime();
+  const date2 = new Date(dateStr2).getTime();
+  // Ensure no NaN results from invalid dates before division
+  if (isNaN(date1) || isNaN(date2)) {
+    return Infinity; // Treat invalid dates as infinitely far apart
+  }
+  return Math.abs((date2 - date1) / (1000 * 60 * 60 * 24));
+};
+
 export const autoMatchEntries = (
   bankEntries: TransactionEntry[],
   ziherEntries: TransactionEntry[]
 ): { updatedBankEntries: TransactionEntry[]; updatedZiherEntries: TransactionEntry[]; newMatches: MatchGroup[] } => {
-  const updatedBankEntries = bankEntries.map(entry => ({ ...entry, status: entry.status === 'matched' ? 'matched' : 'unmatched', matchId: entry.status === 'matched' ? entry.matchId : undefined, matchedEntryDetails: entry.matchedEntryDetails || [] }));
-  const updatedZiherEntries = ziherEntries.map(entry => ({ ...entry, status: entry.status === 'matched' ? 'matched' : 'unmatched', matchId: entry.status === 'matched' ? entry.matchId : undefined, matchedEntryDetails: entry.matchedEntryDetails || [] }));
+  // Work on copies to modify status and matchId
+  const modifiableBankEntries = bankEntries.map(entry => ({ 
+    ...entry, 
+    status: entry.status === 'matched' ? 'matched' : 'unmatched', 
+    matchId: entry.status === 'matched' ? entry.matchId : undefined, 
+    matchedEntryDetails: entry.matchedEntryDetails || [] 
+  }));
+  const modifiableZiherEntries = ziherEntries.map(entry => ({ 
+    ...entry, 
+    status: entry.status === 'matched' ? 'matched' : 'unmatched', 
+    matchId: entry.status === 'matched' ? entry.matchId : undefined, 
+    matchedEntryDetails: entry.matchedEntryDetails || [] 
+  }));
+  
   const newMatches: MatchGroup[] = [];
 
-  const ziherEntriesMap = new Map<string, TransactionEntry[]>();
-  updatedZiherEntries.forEach(entry => {
-    if (entry.status === 'unmatched') {
-      const key = `${entry.date}_${entry.amount.toFixed(2)}`;
-      if (!ziherEntriesMap.has(key)) {
-        ziherEntriesMap.set(key, []);
-      }
-      ziherEntriesMap.get(key)!.push(entry);
+  for (let i = 0; i < modifiableBankEntries.length; i++) {
+    const bankEntry = modifiableBankEntries[i];
+    if (bankEntry.status === 'matched') {
+      continue; 
     }
-  });
 
-  for (const bankEntry of updatedBankEntries) {
-    if (bankEntry.status === 'unmatched') {
-      const key = `${bankEntry.date}_${bankEntry.amount.toFixed(2)}`;
-      const potentialMatches = ziherEntriesMap.get(key);
+    const potentialZiherMatches = modifiableZiherEntries.filter(
+      ze => ze.status === 'unmatched' && ze.amount.toFixed(2) === bankEntry.amount.toFixed(2)
+    );
 
-      if (potentialMatches && potentialMatches.length > 0) {
-        const ziherEntry = potentialMatches.shift(); 
-        if (ziherEntry && ziherEntry.status === 'unmatched') {
-          const matchId = `auto-${crypto.randomUUID()}`;
-          bankEntry.status = 'matched';
-          bankEntry.matchId = matchId;
-          bankEntry.matchedEntryDetails = [{ id: ziherEntry.id, date: ziherEntry.date, description: ziherEntry.description, amount: ziherEntry.amount, source: ziherEntry.source }];
-          
-          ziherEntry.status = 'matched';
-          ziherEntry.matchId = matchId;
-          ziherEntry.matchedEntryDetails = [{ id: bankEntry.id, date: bankEntry.date, description: bankEntry.description, amount: bankEntry.amount, source: bankEntry.source }];
+    if (potentialZiherMatches.length === 0) {
+      continue;
+    }
 
-          newMatches.push({
-            id: matchId,
-            type: 'auto',
-            bankEntryIds: [bankEntry.id],
-            ziherEntryIds: [ziherEntry.id],
-            bankSumInMatch: bankEntry.amount,
-            ziherSumInMatch: ziherEntry.amount,
-            isDiscrepancy: bankEntry.amount.toFixed(2) !== ziherEntry.amount.toFixed(2),
-          });
+    let bestZiherMatch: TransactionEntry | null = null;
 
-          if (potentialMatches.length === 0) {
-            ziherEntriesMap.delete(key);
-          }
-        }
+    if (potentialZiherMatches.length === 1) {
+      bestZiherMatch = potentialZiherMatches[0];
+    } else {
+      // Multiple potential matches, find the one closest by date
+      potentialZiherMatches.sort((a, b) => {
+        const diffA = calculateDateDifferenceInDays(bankEntry.date, a.date);
+        const diffB = calculateDateDifferenceInDays(bankEntry.date, b.date);
+        return diffA - diffB;
+      });
+      bestZiherMatch = potentialZiherMatches[0];
+    }
+
+    if (bestZiherMatch) {
+      const matchId = `auto-${crypto.randomUUID()}`;
+      
+      bankEntry.status = 'matched';
+      bankEntry.matchId = matchId;
+      bankEntry.matchedEntryDetails = [{ 
+        id: bestZiherMatch.id, 
+        date: bestZiherMatch.date, 
+        description: bestZiherMatch.description, 
+        amount: bestZiherMatch.amount, 
+        source: bestZiherMatch.source 
+      }];
+
+      const ziherEntryIndex = modifiableZiherEntries.findIndex(ze => ze.id === bestZiherMatch!.id);
+      if (ziherEntryIndex !== -1) {
+        modifiableZiherEntries[ziherEntryIndex].status = 'matched';
+        modifiableZiherEntries[ziherEntryIndex].matchId = matchId;
+        modifiableZiherEntries[ziherEntryIndex].matchedEntryDetails = [{ 
+          id: bankEntry.id, 
+          date: bankEntry.date, 
+          description: bankEntry.description, 
+          amount: bankEntry.amount, 
+          source: bankEntry.source 
+        }];
       }
+      
+      newMatches.push({
+        id: matchId,
+        type: 'auto',
+        bankEntryIds: [bankEntry.id],
+        ziherEntryIds: [bestZiherMatch.id],
+        bankSumInMatch: bankEntry.amount,
+        ziherSumInMatch: bestZiherMatch.amount,
+        isDiscrepancy: bankEntry.amount.toFixed(2) !== bestZiherMatch.amount.toFixed(2),
+      });
     }
   }
-  return { updatedBankEntries, updatedZiherEntries, newMatches };
+  return { updatedBankEntries: modifiableBankEntries, updatedZiherEntries: modifiableZiherEntries, newMatches };
 };
 
 export const manuallyMatchEntries = (

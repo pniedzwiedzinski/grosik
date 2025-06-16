@@ -24,6 +24,10 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(amount);
 };
 
+const sortEntriesByDate = (entries: TransactionEntry[]): TransactionEntry[] => {
+  return [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
+
 export default function ReconcileProPage() {
   const [bankEntries, setBankEntries] = useState<TransactionEntry[]>([]);
   const [ziherEntries, setZiherEntries] = useState<TransactionEntry[]>([]);
@@ -55,7 +59,6 @@ export default function ReconcileProPage() {
 
   const updateProgress = useCallback(async (value: number) => {
     setProgress(value);
-    // Allow a very short time for UI to update, useful for chained progress updates
     await new Promise(resolve => setTimeout(resolve, 30)); 
   }, [setProgress]);
 
@@ -67,7 +70,7 @@ export default function ReconcileProPage() {
     if (mode === 'expenses') {
       return entries.filter(e => e.amount < 0);
     }
-    return entries; // 'all'
+    return entries; 
   };
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export default function ReconcileProPage() {
 
     const unmatchedBank = currentlyFilteredBankEntries.filter(e => e.status === 'unmatched');
     const unmatchedZiher = currentlyFilteredZiherEntries.filter(e => e.status === 'unmatched');
-    const combined = [...unmatchedBank, ...unmatchedZiher].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const combined = sortEntriesByDate([...unmatchedBank, ...unmatchedZiher]);
     setUnmatchedCombinedEntries(combined);
   }, [bankEntries, ziherEntries, filterMode]);
 
@@ -104,7 +107,7 @@ export default function ReconcileProPage() {
     try {
       if (bankFile) {
         const bankCsvText = await bankFile.text();
-        await updateProgress(15);
+        await updateProgress(10);
         newBankEntries = parseCsv(bankCsvText, 'bank');
         successfullyParsedBank = newBankEntries.length > 0;
         if (bankFile && !successfullyParsedBank) {
@@ -114,14 +117,14 @@ export default function ReconcileProPage() {
             variant: "destructive",
           });
         }
-        await updateProgress(30);
+        await updateProgress(20);
       } else {
         setBankEntries([]); 
       }
 
       if (ziherFile) {
         const ziherCsvText = await ziherFile.text();
-        await updateProgress(45);
+        await updateProgress(30);
         newZiherEntries = parseCsv(ziherCsvText, 'ziher');
         successfullyParsedZiher = newZiherEntries.length > 0;
         if (ziherFile && !successfullyParsedZiher) {
@@ -131,7 +134,7 @@ export default function ReconcileProPage() {
             variant: "destructive",
           });
         }
-        await updateProgress(60);
+        await updateProgress(40);
       } else {
         setZiherEntries([]);
       }
@@ -141,27 +144,28 @@ export default function ReconcileProPage() {
       setMatchGroups([]);
       setFilterMode('all');
 
-      // Set entries first, so subsequent operations have them
-      setBankEntries(newBankEntries);
-      setZiherEntries(newZiherEntries);
+      const sortedNewBankEntries = sortEntriesByDate(newBankEntries);
+      const sortedNewZiherEntries = sortEntriesByDate(newZiherEntries);
+      
+      setBankEntries(sortedNewBankEntries);
+      setZiherEntries(sortedNewZiherEntries);
 
       let autoMatchedCount = 0;
-      if (newBankEntries.length > 0 && newZiherEntries.length > 0) {
-        await updateProgress(75); 
+      if (sortedNewBankEntries.length > 0 && sortedNewZiherEntries.length > 0) {
+        await updateProgress(60); 
         const { 
           updatedBankEntries: autoMatchedBank, 
           updatedZiherEntries: autoMatchedZiher, 
           newMatches: autoNewMatches 
-        } = autoMatchEntries(newBankEntries, newZiherEntries); 
+        } = autoMatchEntries(sortedNewBankEntries, sortedNewZiherEntries); 
         
-        setBankEntries(autoMatchedBank); 
-        setZiherEntries(autoMatchedZiher);
+        setBankEntries(sortEntriesByDate(autoMatchedBank)); 
+        setZiherEntries(sortEntriesByDate(autoMatchedZiher));
         setMatchGroups(autoNewMatches); 
         autoMatchedCount = autoNewMatches.length;
+        await updateProgress(80);
       }
       
-      await updateProgress(90);
-
       if (successfullyParsedBank || successfullyParsedZiher) {
          let description = "Pliki CSV zostały sparsowane.";
          if (newBankEntries.length > 0 && newZiherEntries.length > 0) {
@@ -178,9 +182,8 @@ export default function ReconcileProPage() {
         description: error.message || "Nie można sparsować plików CSV.",
         variant: "destructive",
       });
-      // Attempt to preserve previous valid entries if only one file fails or if parsing completely fails for new files
-      setBankEntries(prev => bankFile && newBankEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bank') ? prev : newBankEntries); 
-      setZiherEntries(prev => ziherFile && newZiherEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('ziher') ? prev : newZiherEntries);
+      setBankEntries(prev => bankFile && newBankEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('bank') ? prev : sortEntriesByDate(newBankEntries)); 
+      setZiherEntries(prev => ziherFile && newZiherEntries.length === 0 && prev.length > 0 && !error.message.toLowerCase().includes('ziher') ? prev : sortEntriesByDate(newZiherEntries));
     } finally {
       await updateProgress(100);
       setTimeout(() => setIsProcessing(false), 500); 
@@ -193,20 +196,18 @@ export default function ReconcileProPage() {
     sumOfBankEntries: number,
     sumOfZiherEntries: number
   ) => {
-    // Assumes isProcessing is true, will be set to false at the end of this func by setTimeout
-    // Progress can be updated from previous step (e.g. 70% or 85%)
-
     const { updatedBankEntries, updatedZiherEntries, newMatch } = manuallyMatchEntries(
       bankIds,
       ziherIds,
-      bankEntries, // current state of bankEntries
-      ziherEntries, // current state of ziherEntries
+      bankEntries, 
+      ziherEntries, 
       sumOfBankEntries,
       sumOfZiherEntries
     );
 
-    setBankEntries(updatedBankEntries);
-    setZiherEntries(updatedZiherEntries);
+    setBankEntries(sortEntriesByDate(updatedBankEntries));
+    setZiherEntries(sortEntriesByDate(updatedZiherEntries));
+
     if (newMatch) {
       setMatchGroups(prev => [...prev, newMatch]);
       toast({ title: "Ręczne powiązanie zakończone sukcesem", description: "Wybrane wpisy zostały powiązane." });
@@ -220,15 +221,15 @@ export default function ReconcileProPage() {
     setSelectedBankEntryIds([]);
     setSelectedZiherEntryIds([]);
     
-    await updateProgress(100); // Ensure progress hits 100
-    setTimeout(() => setIsProcessing(false), 500); // Then hide after a delay, also resets progress via useEffect
+    await updateProgress(100); 
+    setTimeout(() => setIsProcessing(false), 500);
 
   }, [bankEntries, ziherEntries, toast, updateProgress, setBankEntries, setZiherEntries, setMatchGroups, setSelectedBankEntryIds, setSelectedZiherEntryIds, setIsProcessing]);
 
 
   const handleManualMatch = useCallback(async () => {
     setIsProcessing(true);
-    setProgress(0); // Start progress for this operation
+    setProgress(0); 
     await updateProgress(30);
 
     const bankEntriesToMatch = bankEntries.filter(e => selectedBankEntryIds.includes(e.id) && e.status === 'unmatched');
@@ -240,7 +241,7 @@ export default function ReconcileProPage() {
          description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł (Bank i Ziher), nie są puste i wszystkie są 'niepowiązane'.", 
          variant: "destructive"
        });
-      await updateProgress(100); // Show completion of this failed attempt
+      await updateProgress(100); 
       setTimeout(() => setIsProcessing(false), 500);
       return;
     }
@@ -257,11 +258,8 @@ export default function ReconcileProPage() {
         ziherSum: sumSelectedZiher,
       });
       setIsMismatchConfirmDialogOpen(true);
-      // isProcessing remains true; executeManualMatch (called from dialog) will set it to false.
-      // Progress might visually stay at 70% until dialog interaction.
     } else {
       await executeManualMatch(selectedBankEntryIds, selectedZiherEntryIds, sumSelectedBank, sumSelectedZiher);
-      // setIsProcessing and further progress handled by executeManualMatch
     }
   }, [selectedBankEntryIds, selectedZiherEntryIds, bankEntries, ziherEntries, toast, executeManualMatch, updateProgress, setIsProcessing, setProgress, setMismatchConfirmData, setIsMismatchConfirmDialogOpen]);
 
@@ -297,8 +295,8 @@ export default function ReconcileProPage() {
     });
     await updateProgress(80);
 
-    setBankEntries(currentBankEntries);
-    setZiherEntries(currentZiherEntries);
+    setBankEntries(sortEntriesByDate(currentBankEntries));
+    setZiherEntries(sortEntriesByDate(currentZiherEntries));
     setMatchGroups(prev => prev.filter(mg => !matchIdsToUnmatch.has(mg.id)));
     setSelectedBankEntryIds([]);
     setSelectedZiherEntryIds([]);
@@ -308,7 +306,7 @@ export default function ReconcileProPage() {
   }, [selectedBankEntryIds, selectedZiherEntryIds, bankEntries, ziherEntries, toast, updateProgress, setIsProcessing, setProgress, setBankEntries, setZiherEntries, setMatchGroups, setSelectedBankEntryIds, setSelectedZiherEntryIds]);
   
   const handleReset = useCallback(async () => {
-    setIsProcessing(true); // To show progress briefly
+    setIsProcessing(true); 
     await updateProgress(50);
     setBankEntries([]);
     setZiherEntries([]);
@@ -358,7 +356,6 @@ export default function ReconcileProPage() {
   const showFileUpload = bankEntries.length === 0 && ziherEntries.length === 0;
   const showTransactionData = bankEntries.length > 0 || ziherEntries.length > 0;
 
-  // Effect to reset progress when isProcessing becomes false
   useEffect(() => {
     if (!isProcessing) {
       setProgress(0);
@@ -455,10 +452,10 @@ export default function ReconcileProPage() {
       </main>
 
       <AlertDialog open={isMismatchConfirmDialogOpen} onOpenChange={(open) => {
-          if (!open) { // If dialog is closed (e.g. by Esc or overlay click or cancel button)
+          if (!open) { 
             setIsMismatchConfirmDialogOpen(false); 
-            if(isProcessing) { // Only stop processing if it was initiated for mismatch check
-                 setTimeout(() => setIsProcessing(false), 300); // Give time for progress to show 0 or just hide
+            if(isProcessing) { 
+                 setTimeout(() => setIsProcessing(false), 300); 
             }
           } else {
             setIsMismatchConfirmDialogOpen(true);
@@ -476,15 +473,12 @@ export default function ReconcileProPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { 
-              // setIsMismatchConfirmDialogOpen(false); // Handled by onOpenChange
-              // If user cancels, ensure processing stops and progress resets
               if(isProcessing){
                   updateProgress(100).then(() => setTimeout(() => setIsProcessing(false), 300));
               }
             }}>Anuluj</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (mismatchConfirmData) {
-                // Progress should be around 70% from handleManualMatch
                 await updateProgress(85); 
                 await executeManualMatch(
                   mismatchConfirmData.bankIds, 
@@ -492,9 +486,7 @@ export default function ReconcileProPage() {
                   mismatchConfirmData.bankSum, 
                   mismatchConfirmData.ziherSum
                 );
-                // isProcessing and final progress handled by executeManualMatch
               }
-              // setIsMismatchConfirmDialogOpen(false); // Handled by onOpenChange after action
             }}>Powiąż mimo to</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
