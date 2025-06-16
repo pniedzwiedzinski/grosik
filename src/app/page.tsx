@@ -11,7 +11,7 @@ import { ActionToolbar } from '@/components/reconcile-pro/ActionToolbar';
 import { BalanceSummary } from '@/components/reconcile-pro/BalanceSummary';
 import { TransactionTable } from '@/components/reconcile-pro/TransactionTable';
 import { TransactionFilter } from '@/components/reconcile-pro/TransactionFilter';
-import { Input } from "@/components/ui/input"; // Import Input
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -105,7 +105,6 @@ export default function ReconcileProPage() {
     setUnmatchedCombinedEntries(combined);
   }, [bankEntries, ziherEntries, filterMode, unmatchedSearchQuery]);
 
-  // Effect for BalanceSummary totals - only depends on filterMode
   useEffect(() => {
     const modeFilteredBankEntries = filterEntriesByMode(bankEntries, filterMode);
     const modeFilteredZiherEntries = filterEntriesByMode(ziherEntries, filterMode);
@@ -395,6 +394,47 @@ export default function ReconcileProPage() {
   const displayedBankEntries = searchFilterEntries(filterEntriesByMode(bankEntries, filterMode), bankSearchQuery);
   const displayedZiherEntries = searchFilterEntries(filterEntriesByMode(ziherEntries, filterMode), ziherSearchQuery);
 
+  // "Select All" logic for Unmatched tab
+  const selectableUnmatchedEntries = unmatchedCombinedEntries.filter(e => e.status !== 'matched');
+  const isAllUnmatchedSelected = selectableUnmatchedEntries.length > 0 &&
+    selectableUnmatchedEntries.every(e => (e.source === 'bank' ? selectedBankEntryIds : selectedZiherEntryIds).includes(e.id));
+  
+  const handleToggleSelectAllUnmatched = () => {
+    const bankIdsToToggle = selectableUnmatchedEntries.filter(e => e.source === 'bank').map(e => e.id);
+    const ziherIdsToToggle = selectableUnmatchedEntries.filter(e => e.source === 'ziher').map(e => e.id);
+
+    if (isAllUnmatchedSelected) {
+      setSelectedBankEntryIds(prev => prev.filter(id => !bankIdsToToggle.includes(id)));
+      setSelectedZiherEntryIds(prev => prev.filter(id => !ziherIdsToToggle.includes(id)));
+    } else {
+      setSelectedBankEntryIds(prev => Array.from(new Set([...prev, ...bankIdsToToggle])));
+      setSelectedZiherEntryIds(prev => Array.from(new Set([...prev, ...ziherIdsToToggle])));
+    }
+  };
+
+  // "Select All" logic for Bank tab
+  const isAllBankSelected = displayedBankEntries.length > 0 && displayedBankEntries.every(e => selectedBankEntryIds.includes(e.id));
+  const handleToggleSelectAllBank = () => {
+    const allDisplayedBankIds = displayedBankEntries.map(e => e.id);
+    if (isAllBankSelected) {
+      setSelectedBankEntryIds(prev => prev.filter(id => !allDisplayedBankIds.includes(id)));
+    } else {
+      setSelectedBankEntryIds(prev => Array.from(new Set([...prev, ...allDisplayedBankIds])));
+    }
+  };
+
+  // "Select All" logic for Ziher tab
+  const isAllZiherSelected = displayedZiherEntries.length > 0 && displayedZiherEntries.every(e => selectedZiherEntryIds.includes(e.id));
+  const handleToggleSelectAllZiher = () => {
+    const allDisplayedZiherIds = displayedZiherEntries.map(e => e.id);
+    if (isAllZiherSelected) {
+      setSelectedZiherEntryIds(prev => prev.filter(id => !allDisplayedZiherIds.includes(id)));
+    } else {
+      setSelectedZiherEntryIds(prev => Array.from(new Set([...prev, ...allDisplayedZiherIds])));
+    }
+  };
+
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <ReconcileProHeader />
@@ -468,6 +508,9 @@ export default function ReconcileProPage() {
                 onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
                 isProcessing={isProcessing}
                 matchGroups={matchGroups}
+                isAllSelected={isAllUnmatchedSelected}
+                onToggleSelectAll={handleToggleSelectAllUnmatched}
+                canSelectAny={selectableUnmatchedEntries.length > 0}
               />
             </TabsContent>
             <TabsContent value="bank" className="mt-4 space-y-4">
@@ -488,6 +531,9 @@ export default function ReconcileProPage() {
                 onRowSelect={(id, isSelected) => handleRowSelect('bank', id, isSelected)}
                 isProcessing={isProcessing}
                 matchGroups={matchGroups}
+                isAllSelected={isAllBankSelected}
+                onToggleSelectAll={handleToggleSelectAllBank}
+                canSelectAny={displayedBankEntries.length > 0}
               />
             </TabsContent>
             <TabsContent value="ziher" className="mt-4 space-y-4">
@@ -508,6 +554,9 @@ export default function ReconcileProPage() {
                 onRowSelect={(id, isSelected) => handleRowSelect('ziher', id, isSelected)}
                 isProcessing={isProcessing}
                 matchGroups={matchGroups}
+                isAllSelected={isAllZiherSelected}
+                onToggleSelectAll={handleToggleSelectAllZiher}
+                canSelectAny={displayedZiherEntries.length > 0}
               />
             </TabsContent>
           </Tabs>
@@ -558,5 +607,3 @@ export default function ReconcileProPage() {
     </div>
   );
 }
-
-    
