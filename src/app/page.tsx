@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,6 +12,7 @@ import { TransactionTable } from '@/components/reconcile-pro/TransactionTable';
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileWarning } from 'lucide-react';
 
 
@@ -56,7 +58,7 @@ export default function ReconcileProPage() {
         setBankEntries(newBankEntries);
         await updateProgress(40);
       } else {
-        setBankEntries([]); // Clear if no file provided
+        setBankEntries([]); 
       }
 
       if (bookkeepingFile) {
@@ -66,10 +68,9 @@ export default function ReconcileProPage() {
         setBookkeepingEntries(newBookkeepingEntries);
         await updateProgress(80);
       } else {
-        setBookkeepingEntries([]); // Clear if no file provided
+        setBookkeepingEntries([]); 
       }
       
-      // Reset selections and matches
       setSelectedBankEntryIds([]);
       setSelectedBookkeepingEntryIds([]);
       setMatchGroups([]);
@@ -81,12 +82,11 @@ export default function ReconcileProPage() {
         description: error.message || "Could not parse CSV files.",
         variant: "destructive",
       });
-      // Reset if parsing fails partially
       setBankEntries(prev => bankFile ? newBankEntries : prev);
       setBookkeepingEntries(prev => bookkeepingFile ? newBookkeepingEntries : prev);
     } finally {
       await updateProgress(100);
-      setTimeout(() => setIsProcessing(false), 500); // Allow progress bar to complete
+      setTimeout(() => setIsProcessing(false), 500); 
     }
   };
 
@@ -102,7 +102,7 @@ export default function ReconcileProPage() {
     await updateProgress(70);
     setBankEntries(updatedBankEntries);
     setBookkeepingEntries(updatedBookkeepingEntries);
-    setMatchGroups(prev => [...prev.filter(mg => mg.type === 'manual'), ...newMatches]); // Keep manual, replace auto
+    setMatchGroups(prev => [...prev.filter(mg => mg.type === 'manual'), ...newMatches]); 
     toast({ title: "Auto-Matching Complete", description: `${newMatches.length} new automatic matches found.` });
     await updateProgress(100);
     setTimeout(() => setIsProcessing(false), 500);
@@ -135,7 +135,6 @@ export default function ReconcileProPage() {
     setIsProcessing(true);
     setProgress(0);
     await updateProgress(20);
-    // Find all matchIds from selected entries
     const matchIdsToUnmatch = new Set<string>();
     [...selectedBankEntryIds, ...selectedBookkeepingEntryIds].forEach(id => {
       const bankEntry = bankEntries.find(e => e.id === id);
@@ -192,7 +191,7 @@ export default function ReconcileProPage() {
 
     if (!entry) return;
 
-    const actualSource = entry.source; // Use actual source from combined list
+    const actualSource = entry.source; 
 
     if (actualSource === 'bank') {
       setSelectedBankEntryIds(prev => isSelected ? [...prev, id] : prev.filter(item => item !== id));
@@ -222,7 +221,7 @@ export default function ReconcileProPage() {
           </div>
         )}
 
-        {(bankEntries.length > 0 || bookkeepingEntries.length > 0) && (
+        {(bankEntries.length > 0 || bookkeepingEntries.length > 0) && !isProcessing && (
           <ActionToolbar
             onAutoMatch={handleAutoMatch}
             onManualMatch={handleManualMatch}
@@ -245,29 +244,42 @@ export default function ReconcileProPage() {
           </Alert>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
-          <TransactionTable
-            title="Bank Entries"
-            entries={bankEntries}
-            selectedIds={selectedBankEntryIds}
-            onRowSelect={(id, isSelected) => handleRowSelect('bank', id, isSelected)}
-            isProcessing={isProcessing}
-          />
-          <TransactionTable
-            title="Bookkeeping Entries"
-            entries={bookkeepingEntries}
-            selectedIds={selectedBookkeepingEntryIds}
-            onRowSelect={(id, isSelected) => handleRowSelect('bookkeeping', id, isSelected)}
-            isProcessing={isProcessing}
-          />
-          <TransactionTable
-            title="Unmatched Entries"
-            entries={unmatchedCombinedEntries}
-            selectedIds={[...selectedBankEntryIds, ...selectedBookkeepingEntryIds]} // Show selection from both sources
-            onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
-            isProcessing={isProcessing}
-          />
-        </div>
+        {(bankEntries.length > 0 || bookkeepingEntries.length > 0) && !isProcessing && (
+          <Tabs defaultValue="bank" className="mt-6 w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="bank">Bank</TabsTrigger>
+              <TabsTrigger value="bookkeeping">Bookkeeping</TabsTrigger>
+              <TabsTrigger value="unmatched">Unmatched</TabsTrigger>
+            </TabsList>
+            <TabsContent value="bank" className="mt-4">
+              <TransactionTable
+                title="Bank Entries"
+                entries={bankEntries}
+                selectedIds={selectedBankEntryIds}
+                onRowSelect={(id, isSelected) => handleRowSelect('bank', id, isSelected)}
+                isProcessing={isProcessing}
+              />
+            </TabsContent>
+            <TabsContent value="bookkeeping" className="mt-4">
+              <TransactionTable
+                title="Bookkeeping Entries"
+                entries={bookkeepingEntries}
+                selectedIds={selectedBookkeepingEntryIds}
+                onRowSelect={(id, isSelected) => handleRowSelect('bookkeeping', id, isSelected)}
+                isProcessing={isProcessing}
+              />
+            </TabsContent>
+            <TabsContent value="unmatched" className="mt-4">
+              <TransactionTable
+                title="Unmatched Entries"
+                entries={unmatchedCombinedEntries}
+                selectedIds={[...selectedBankEntryIds, ...selectedBookkeepingEntryIds]} 
+                onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
+                isProcessing={isProcessing}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
       <footer className="py-4 border-t border-border text-center text-sm text-muted-foreground">
         ReconcilePro &copy; {new Date().getFullYear()}
@@ -275,3 +287,5 @@ export default function ReconcileProPage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { TransactionEntry } from '@/types/reconciliation';
@@ -59,7 +60,7 @@ export function TransactionTable({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0 flex-grow overflow-hidden">
-        <ScrollArea className="h-[calc(100vh-10rem-150px)] md:h-[calc(100vh-12rem-200px)] lg:h-[400px] xl:h-[500px]"> {/* Adjusted height */}
+        <ScrollArea className="h-[400px]">
           {entries.length === 0 && !isProcessing ? (
             <div className="p-6 text-center text-muted-foreground">No transactions to display.</div>
           ) : isProcessing && entries.length === 0 ? (
@@ -92,7 +93,7 @@ export function TransactionTable({
                     />
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{entry.date}</TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={entry.description}>{entry.description}</TableCell>
+                  <TableCell className="max-w-[150px] md:max-w-[200px] truncate" title={entry.description}>{entry.description}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(entry.amount)}</TableCell>
                   {title.toLowerCase().includes("unmatched") && <TableCell><Badge variant={entry.source === 'bank' ? 'default' : 'secondary'}>{entry.source}</Badge></TableCell>}
                   <TableCell>
@@ -133,3 +134,5 @@ export function TransactionTable({
     </Card>
   );
 }
+
+    
