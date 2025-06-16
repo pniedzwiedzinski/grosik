@@ -2,32 +2,41 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, BookOpenText, Scale } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Banknote, BookOpenText, Scale, Trash2 } from 'lucide-react';
 
 interface BalanceSummaryProps {
   bankTotal: number;
   ziherTotal: number;
   difference: number;
+  onReset: () => void;
+  isProcessing: boolean;
 }
 
-// A number is effectively zero if its absolute value is less than half of the smallest currency unit (e.g., 0.005 for PLN)
-// This handles floating point inaccuracies that might result in values like -0.00000001.
 const isEffectivelyZero = (amount: number): boolean => {
   return Math.abs(amount) < 0.005; 
 };
 
 const formatCurrency = (amount: number) => {
-  // If the amount is effectively zero, format 0 to avoid displaying "-0,00 zł"
   const displayAmount = isEffectivelyZero(amount) ? 0 : amount;
   return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(displayAmount);
 };
 
 
-export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSummaryProps) {
+export function BalanceSummary({ bankTotal, ziherTotal, difference, onReset, isProcessing }: BalanceSummaryProps) {
   return (
     <Card className="mb-6 container mx-auto shadow-md">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-headline">Podsumowanie Finansowe</CardTitle>
+        <Button
+          onClick={onReset}
+          disabled={isProcessing}
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Wgraj ponownie pliki
+        </Button>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="flex flex-col p-4 bg-card rounded-lg shadow-sm border border-border">
@@ -61,4 +70,3 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSum
     </Card>
   );
 }
-

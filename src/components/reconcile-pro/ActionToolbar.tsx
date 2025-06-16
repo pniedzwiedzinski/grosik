@@ -2,13 +2,12 @@
 "use client";
 
 import { Button } from '@/components/ui/button';
-import { Link2, Link2Off, RefreshCw } from 'lucide-react';
+import { Link2, Link2Off } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ActionToolbarProps {
   onManualMatch: () => void;
   onUnmatch: () => void;
-  onReset: () => void;
   canManualMatch: boolean;
   canUnmatch: boolean;
   isProcessing: boolean;
@@ -17,7 +16,6 @@ interface ActionToolbarProps {
 export function ActionToolbar({
   onManualMatch,
   onUnmatch,
-  onReset,
   canManualMatch,
   canUnmatch,
   isProcessing,
@@ -40,15 +38,6 @@ export function ActionToolbar({
         >
           <Link2Off className="mr-2 h-4 w-4" />
           Rozłącz Wybrane
-        </Button>
-        <Button
-          onClick={onReset}
-          disabled={isProcessing}
-          variant="ghost"
-          className="text-muted-foreground hover:text-foreground ml-auto"
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Resetuj Wszystko
         </Button>
       </CardContent>
     </Card>

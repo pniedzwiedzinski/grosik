@@ -384,6 +384,8 @@ export default function ReconcileProPage() {
               bankTotal={bankTotal}
               ziherTotal={ziherTotal}
               difference={difference}
+              onReset={handleReset}
+              isProcessing={isProcessing}
             />
             <TransactionFilter 
               currentFilterMode={filterMode}
@@ -392,7 +394,6 @@ export default function ReconcileProPage() {
             <ActionToolbar
               onManualMatch={handleManualMatch}
               onUnmatch={handleUnmatch}
-              onReset={handleReset}
               canManualMatch={canManualMatch}
               canUnmatch={canUnmatch}
               isProcessing={isProcessing}
