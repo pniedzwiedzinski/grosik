@@ -406,9 +406,9 @@ export default function ReconcileProPage() {
         {showFileUpload && !isProcessing && (
           <Alert className="mt-6">
             <FileWarning className="h-4 w-4" />
-            <AlertTitle>Rozpocznij</AlertTitle>
+            <AlertTitle>Skąd wziąć pliki CSV?</AlertTitle>
             <AlertDescription>
-              Prześlij historię z banku i pliki CSV z Ziher powyżej, aby rozpocząć powiązywanie transakcji.
+              W książce bankowej w ZiHeRze znajdziesz przycisk do pobierania CSV. W iBiznesie musisz wejść w historię &rarr; wybrać zakres dat dla twojego rozliczenia &rarr; kliknąć eksportuj historię i wybrać format CSV.
             </AlertDescription>
           </Alert>
         )}
