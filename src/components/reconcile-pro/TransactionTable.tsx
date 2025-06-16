@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Info, Banknote, BookOpenText } from 'lucide-react';
+import { Info, Banknote, BookOpenText, CheckCircle2 } from 'lucide-react';
 
 interface TransactionTableProps {
   title: string;
@@ -28,6 +28,7 @@ interface TransactionTableProps {
   isAllSelected: boolean;
   onToggleSelectAll: () => void;
   canSelectAny: boolean;
+  isGloballyReconciled?: boolean;
 }
 
 const statusTranslations: Record<string, string> = { 
@@ -47,6 +48,7 @@ export function TransactionTable({
   isAllSelected,
   onToggleSelectAll,
   canSelectAny,
+  isGloballyReconciled,
 }: TransactionTableProps) {
   
   const getRowStyle = (entry: TransactionEntry) => {
@@ -99,7 +101,14 @@ export function TransactionTable({
       <CardContent className="p-0 flex-grow overflow-hidden">
         <ScrollArea className="h-[400px]">
           {entries.length === 0 && !isProcessing ? (
-            <div className="p-6 text-center text-muted-foreground">Brak transakcji do wyświetlenia.</div>
+            isGloballyReconciled && title.toLowerCase().includes("niepowiązane") ? (
+              <div className="p-6 text-center text-green-600 dark:text-green-400 font-semibold flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-5 h-5" />
+                Sukces! Wpisy w ZiHeRze zgadzają się z bankiem!
+              </div>
+            ) : (
+              <div className="p-6 text-center text-muted-foreground">Brak transakcji do wyświetlenia.</div>
+            )
           ) : isProcessing && entries.length === 0 ? (
              <div className="p-6 text-center text-muted-foreground">Przetwarzanie...</div>
           ) : (

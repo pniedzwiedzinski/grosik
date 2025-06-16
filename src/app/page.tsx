@@ -394,7 +394,6 @@ export default function ReconcileProPage() {
   const displayedBankEntries = searchFilterEntries(filterEntriesByMode(bankEntries, filterMode), bankSearchQuery);
   const displayedZiherEntries = searchFilterEntries(filterEntriesByMode(ziherEntries, filterMode), ziherSearchQuery);
 
-  // "Select All" logic for Unmatched tab
   const selectableUnmatchedEntries = unmatchedCombinedEntries.filter(e => e.status !== 'matched');
   const isAllUnmatchedSelected = selectableUnmatchedEntries.length > 0 &&
     selectableUnmatchedEntries.every(e => (e.source === 'bank' ? selectedBankEntryIds : selectedZiherEntryIds).includes(e.id));
@@ -412,7 +411,6 @@ export default function ReconcileProPage() {
     }
   };
 
-  // "Select All" logic for Bank tab
   const isAllBankSelected = displayedBankEntries.length > 0 && displayedBankEntries.every(e => selectedBankEntryIds.includes(e.id));
   const handleToggleSelectAllBank = () => {
     const allDisplayedBankIds = displayedBankEntries.map(e => e.id);
@@ -423,7 +421,6 @@ export default function ReconcileProPage() {
     }
   };
 
-  // "Select All" logic for Ziher tab
   const isAllZiherSelected = displayedZiherEntries.length > 0 && displayedZiherEntries.every(e => selectedZiherEntryIds.includes(e.id));
   const handleToggleSelectAllZiher = () => {
     const allDisplayedZiherIds = displayedZiherEntries.map(e => e.id);
@@ -434,6 +431,9 @@ export default function ReconcileProPage() {
     }
   };
 
+  const allEntriesAreGloballyMatched = (bankEntries.length > 0 || ziherEntries.length > 0) &&
+                                   bankEntries.every(e => e.status === 'matched') &&
+                                   ziherEntries.every(e => e.status === 'matched');
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -511,6 +511,7 @@ export default function ReconcileProPage() {
                 isAllSelected={isAllUnmatchedSelected}
                 onToggleSelectAll={handleToggleSelectAllUnmatched}
                 canSelectAny={selectableUnmatchedEntries.length > 0}
+                isGloballyReconciled={allEntriesAreGloballyMatched}
               />
             </TabsContent>
             <TabsContent value="bank" className="mt-4 space-y-4">
