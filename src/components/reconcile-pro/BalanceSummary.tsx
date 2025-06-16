@@ -14,6 +14,11 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(amount);
 };
 
+const isEffectivelyZero = (amount: number): boolean => {
+  const roundedAmount = amount.toFixed(2);
+  return roundedAmount === "0.00" || roundedAmount === "-0.00";
+};
+
 export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSummaryProps) {
   return (
     <Card className="mb-6 container mx-auto shadow-md">
@@ -26,7 +31,7 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSum
             <Banknote className="w-4 h-4 mr-2 text-primary" />
             Suma Bank
           </div>
-          <p className={`text-2xl font-semibold ${bankTotal === 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
+          <p className={`text-2xl font-semibold ${isEffectivelyZero(bankTotal) ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
             {formatCurrency(bankTotal)}
           </p>
         </div>
@@ -35,7 +40,7 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSum
             <BookOpenText className="w-4 h-4 mr-2 text-primary" />
             Suma Ziher
           </div>
-          <p className={`text-2xl font-semibold ${ziherTotal === 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
+          <p className={`text-2xl font-semibold ${isEffectivelyZero(ziherTotal) ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
             {formatCurrency(ziherTotal)}
           </p>
         </div>
@@ -44,7 +49,7 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSum
             <Scale className="w-4 h-4 mr-2" />
             Różnica
           </div>
-          <p className={`text-2xl font-semibold ${difference === 0 ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+          <p className={`text-2xl font-semibold ${isEffectivelyZero(difference) ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
             {formatCurrency(difference)}
           </p>
         </div>
