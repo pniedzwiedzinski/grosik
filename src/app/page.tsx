@@ -40,7 +40,7 @@ export default function ReconcileProPage() {
 
   const updateProgress = (value: number) => {
     setProgress(value);
-    return new Promise(resolve => setTimeout(resolve, 50)); // Small delay for UI update
+    return new Promise(resolve => setTimeout(resolve, 50)); 
   };
 
   const handleFilesProcessed = async (bankFile: File | null, bookkeepingFile: File | null) => {
@@ -87,7 +87,7 @@ export default function ReconcileProPage() {
         description: error.message || "Could not parse CSV files.",
         variant: "destructive",
       });
-      setBankEntries(prev => bankFile ? newBankEntries : prev); // Keep previous if only one file caused error and other was fine.
+      setBankEntries(prev => bankFile ? newBankEntries : prev); 
       setBookkeepingEntries(prev => bookkeepingFile ? newBookkeepingEntries : prev);
     } finally {
       await updateProgress(100);
@@ -128,10 +128,13 @@ export default function ReconcileProPage() {
     setBookkeepingEntries(updatedBookkeepingEntries);
     if (newMatch) {
       setMatchGroups(prev => [...prev, newMatch]);
+      toast({ title: "Manual Match Successful", description: "Selected entries have been matched." });
+    } else {
+       toast({ title: "Manual Match Failed", description: "Could not match selected entries. Ensure you select entries from both bank and bookkeeping sources.", variant: "destructive"});
     }
     setSelectedBankEntryIds([]);
     setSelectedBookkeepingEntryIds([]);
-    toast({ title: "Manual Match Successful", description: "Selected entries have been matched." });
+    
     await updateProgress(100);
     setTimeout(() => setIsProcessing(false), 500);
   }, [selectedBankEntryIds, selectedBookkeepingEntryIds, bankEntries, bookkeepingEntries, toast]);
@@ -205,7 +208,7 @@ export default function ReconcileProPage() {
     }
   };
   
-  const canManualMatch = (selectedBankEntryIds.length > 0 && selectedBookkeepingEntryIds.length > 0) || (selectedBankEntryIds.length + selectedBookkeepingEntryIds.length > 1 && (selectedBankEntryIds.length === 0 || selectedBookkeepingEntryIds.length === 0));
+  const canManualMatch = selectedBankEntryIds.length > 0 && selectedBookkeepingEntryIds.length > 0;
   const canUnmatch = [...selectedBankEntryIds, ...selectedBookkeepingEntryIds].some(id => {
     const bankEntry = bankEntries.find(e => e.id === id && e.status === 'matched');
     const bookEntry = bookkeepingEntries.find(e => e.id === id && e.status === 'matched');

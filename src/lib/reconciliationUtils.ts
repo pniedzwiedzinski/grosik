@@ -1,3 +1,4 @@
+
 import type { TransactionEntry, MatchGroup } from '@/types/reconciliation';
 
 export const autoMatchEntries = (
@@ -25,7 +26,7 @@ export const autoMatchEntries = (
       const potentialMatches = bookEntriesMap.get(key);
 
       if (potentialMatches && potentialMatches.length > 0) {
-        const bookEntry = potentialMatches.shift(); // Take the first available match
+        const bookEntry = potentialMatches.shift(); 
         if (bookEntry && bookEntry.status === 'unmatched') {
           const matchId = `auto-${crypto.randomUUID()}`;
           bankEntry.status = 'matched';
@@ -43,7 +44,6 @@ export const autoMatchEntries = (
             bookkeepingEntryIds: [bookEntry.id],
           });
 
-          // If no more potential matches for this key, remove it
           if (potentialMatches.length === 0) {
             bookEntriesMap.delete(key);
           }
@@ -60,18 +60,9 @@ export const manuallyMatchEntries = (
   allBankEntries: TransactionEntry[],
   allBookkeepingEntries: TransactionEntry[]
 ): { updatedBankEntries: TransactionEntry[]; updatedBookkeepingEntries: TransactionEntry[]; newMatch: MatchGroup | null } => {
+  
   if (selectedBankIds.length === 0 || selectedBookkeepingIds.length === 0) {
-    // Allow matching multiple bank to multiple bookkeeping, or bank to book, book to bank
-    if(selectedBankIds.length > 0 && selectedBookkeepingIds.length === 0 && selectedBankIds.length < 2 ) return { updatedBankEntries: allBankEntries, updatedBookkeepingEntries: allBookkeepingEntries, newMatch: null };
-    if(selectedBookkeepingIds.length > 0 && selectedBankIds.length === 0 && selectedBookkeepingIds.length < 2) return { updatedBankEntries: allBankEntries, updatedBookkeepingEntries: allBookkeepingEntries, newMatch: null };
-    if(selectedBankIds.length === 0 && selectedBookkeepingIds.length === 0) return { updatedBankEntries: allBankEntries, updatedBookkeepingEntries: allBookkeepingEntries, newMatch: null };
-    // The specific case of one-to-many or many-to-one needs at least one from each side, or multiple from one side to one on the other.
-    // The current prompt states "manually match multiple entries to a single entry", 
-    // implying one side must be singular for this specific feature variant.
-    // For more general N:M matching, this check would be different.
-    // Given the prompt, if either selection is empty, or if we try to match N from bank to M from book where N>1 and M>1, it might be out of scope or handled differently.
-    // The spirit of "multiple entries to a single entry" typically means N:1 or 1:M.
-    // Let's assume generic N:M matching is allowed.
+    return { updatedBankEntries: allBankEntries, updatedBookkeepingEntries: allBookkeepingEntries, newMatch: null };
   }
 
 
@@ -95,7 +86,6 @@ export const manuallyMatchEntries = (
     return entry;
   });
   
-  // Populate matchedEntryDetails for all involved entries
   const allMatchedDetails = [...matchedBankEntriesDetails, ...matchedBookkeepingEntriesDetails];
 
   const finalBankEntries = newAllBankEntries.map(entry => {
