@@ -14,10 +14,15 @@ import { TransactionFilter } from '@/components/reconcile-pro/TransactionFilter'
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileWarning } from 'lucide-react';
 
 type FilterMode = 'all' | 'income' | 'expenses';
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(amount);
+};
 
 export default function ReconcileProPage() {
   const [bankEntries, setBankEntries] = useState<TransactionEntry[]>([]);
@@ -37,6 +42,14 @@ export default function ReconcileProPage() {
   const [difference, setDifference] = useState(0);
 
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+
+  const [isMismatchConfirmDialogOpen, setIsMismatchConfirmDialogOpen] = useState(false);
+  const [mismatchConfirmData, setMismatchConfirmData] = useState<{
+    bankIds: string[];
+    ziherIds: string[];
+    bankSum: number;
+    ziherSum: number;
+  } | null>(null);
 
   const { toast } = useToast();
 
@@ -91,7 +104,7 @@ export default function ReconcileProPage() {
         await updateProgress(15);
         newBankEntries = parseCsv(bankCsvText, 'bank');
         successfullyParsedBank = newBankEntries.length > 0;
-        if (bankFile && !successfullyParsedBank) { // Check if file was provided but no entries parsed
+        if (bankFile && !successfullyParsedBank) {
           toast({
             title: "Problem z plikiem historii z banku",
             description: `Nie znaleziono wpisów w "${bankFile.name}". Sprawdź format/zawartość pliku.`,
@@ -108,7 +121,7 @@ export default function ReconcileProPage() {
         await updateProgress(45);
         newZiherEntries = parseCsv(ziherCsvText, 'ziher');
         successfullyParsedZiher = newZiherEntries.length > 0;
-        if (ziherFile && !successfullyParsedZiher) { // Check if file was provided but no entries parsed
+        if (ziherFile && !successfullyParsedZiher) {
           toast({
             title: "Problem z plikiem Ziher",
             description: `Nie znaleziono wpisów w "${ziherFile.name}". Sprawdź format/zawartość pliku.`,
@@ -122,10 +135,9 @@ export default function ReconcileProPage() {
       
       setSelectedBankEntryIds([]);
       setSelectedZiherEntryIds([]);
-      setMatchGroups([]); // Reset match groups on new file processing
+      setMatchGroups([]);
       setFilterMode('all');
 
-      // Initial state update with parsed entries
       setBankEntries(newBankEntries);
       setZiherEntries(newZiherEntries);
 
@@ -169,18 +181,51 @@ export default function ReconcileProPage() {
       setTimeout(() => setIsProcessing(false), 500); 
     }
   };
+  
+  const executeManualMatch = useCallback((
+    bankIds: string[],
+    ziherIds: string[],
+    sumOfBankEntries: number,
+    sumOfZiherEntries: number
+  ) => {
+    const { updatedBankEntries, updatedZiherEntries, newMatch } = manuallyMatchEntries(
+      bankIds,
+      ziherIds,
+      bankEntries,
+      ziherEntries,
+      sumOfBankEntries,
+      sumOfZiherEntries
+    );
+
+    setBankEntries(updatedBankEntries);
+    setZiherEntries(updatedZiherEntries);
+    if (newMatch) {
+      setMatchGroups(prev => [...prev, newMatch]);
+      toast({ title: "Ręczne powiązanie zakończone sukcesem", description: "Wybrane wpisy zostały powiązane." });
+    } else {
+      // This case should ideally be prevented by canManualMatch and prior checks in handleManualMatch
+       toast({ 
+         title: "Ręczne powiązanie nie powiodło się", 
+         description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niepowiązane'.", 
+         variant: "destructive"
+       });
+    }
+    setSelectedBankEntryIds([]);
+    setSelectedZiherEntryIds([]);
+    setIsProcessing(false);
+    setProgress(0);
+  }, [bankEntries, ziherEntries, toast, setBankEntries, setZiherEntries, setMatchGroups, setSelectedBankEntryIds, setSelectedZiherEntryIds, setIsProcessing, setProgress]);
+
 
   const handleManualMatch = useCallback(async () => {
     setIsProcessing(true);
     setProgress(0);
     await updateProgress(30);
 
-    const bankEntriesToMatch = bankEntries.filter(e => selectedBankEntryIds.includes(e.id));
-    const ziherEntriesToMatch = ziherEntries.filter(e => selectedZiherEntryIds.includes(e.id));
+    const bankEntriesToMatch = bankEntries.filter(e => selectedBankEntryIds.includes(e.id) && e.status === 'unmatched');
+    const ziherEntriesToMatch = ziherEntries.filter(e => selectedZiherEntryIds.includes(e.id) && e.status === 'unmatched');
 
-    if (bankEntriesToMatch.length === 0 || ziherEntriesToMatch.length === 0 ||
-        !bankEntriesToMatch.every(e => e.status === 'unmatched') ||
-        !ziherEntriesToMatch.every(e => e.status === 'unmatched')) {
+    if (bankEntriesToMatch.length === 0 || ziherEntriesToMatch.length === 0) {
       toast({ 
          title: "Ręczne powiązanie nie powiodło się", 
          description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł (Bank i Ziher), nie są puste i wszystkie są 'niepowiązane'.", 
@@ -192,33 +237,31 @@ export default function ReconcileProPage() {
       return;
     }
     
-    const { updatedBankEntries, updatedZiherEntries, newMatch } = manuallyMatchEntries(
-      selectedBankEntryIds,
-      selectedZiherEntryIds,
-      bankEntries, // Pass full current bankEntries
-      ziherEntries  // Pass full current ziherEntries
-    );
+    const sumSelectedBank = bankEntriesToMatch.reduce((acc, entry) => acc + entry.amount, 0);
+    const sumSelectedZiher = ziherEntriesToMatch.reduce((acc, entry) => acc + entry.amount, 0);
     await updateProgress(70);
-    setBankEntries(updatedBankEntries);
-    setZiherEntries(updatedZiherEntries);
-    if (newMatch) {
-      setMatchGroups(prev => [...prev, newMatch]);
-      toast({ title: "Ręczne powiązanie zakończone sukcesem", description: "Wybrane wpisy zostały powiązane." });
+
+    if (sumSelectedBank.toFixed(2) !== sumSelectedZiher.toFixed(2)) {
+      setMismatchConfirmData({
+        bankIds: selectedBankEntryIds,
+        ziherIds: selectedZiherEntryIds,
+        bankSum: sumSelectedBank,
+        ziherSum: sumSelectedZiher,
+      });
+      setIsMismatchConfirmDialogOpen(true);
+      // isProcessing remains true, will be set to false by dialog actions or executeManualMatch
+    } else {
+      executeManualMatch(selectedBankEntryIds, selectedZiherEntryIds, sumSelectedBank, sumSelectedZiher);
     }
-    // This 'else' part is now covered by the initial check
-    // else {
-    //    toast({ 
-    //      title: "Ręczne powiązanie nie powiodło się", 
-    //      description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niepowiązane'.", 
-    //      variant: "destructive"
-    //    });
-    // }
-    setSelectedBankEntryIds([]);
-    setSelectedZiherEntryIds([]);
-    
-    await updateProgress(100);
-    setTimeout(() => setIsProcessing(false), 500);
-  }, [selectedBankEntryIds, selectedZiherEntryIds, bankEntries, ziherEntries, toast]);
+    // Progress to 100 and timeout for setIsProcessing(false) are handled within executeManualMatch or dialog actions
+    // For now, just ensure it is not reset prematurely here if dialog opens.
+    if (sumSelectedBank.toFixed(2) === sumSelectedZiher.toFixed(2)) {
+        await updateProgress(100);
+        setTimeout(() => setIsProcessing(false), 500); // Only if not opening dialog
+    }
+
+
+  }, [selectedBankEntryIds, selectedZiherEntryIds, bankEntries, ziherEntries, toast, executeManualMatch, setIsProcessing, setProgress, setMismatchConfirmData, setIsMismatchConfirmDialogOpen]);
 
   const handleUnmatch = useCallback(async () => {
     setIsProcessing(true);
@@ -372,6 +415,7 @@ export default function ReconcileProPage() {
                 selectedIds={[...selectedBankEntryIds, ...selectedZiherEntryIds]} 
                 onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
                 isProcessing={isProcessing}
+                matchGroups={matchGroups}
               />
             </TabsContent>
             <TabsContent value="bank" className="mt-4">
@@ -381,6 +425,7 @@ export default function ReconcileProPage() {
                 selectedIds={selectedBankEntryIds}
                 onRowSelect={(id, isSelected) => handleRowSelect('bank', id, isSelected)}
                 isProcessing={isProcessing}
+                matchGroups={matchGroups}
               />
             </TabsContent>
             <TabsContent value="ziher" className="mt-4">
@@ -390,11 +435,51 @@ export default function ReconcileProPage() {
                 selectedIds={selectedZiherEntryIds}
                 onRowSelect={(id, isSelected) => handleRowSelect('ziher', id, isSelected)}
                 isProcessing={isProcessing}
+                matchGroups={matchGroups}
               />
             </TabsContent>
           </Tabs>
         )}
       </main>
+
+      <AlertDialog open={isMismatchConfirmDialogOpen} onOpenChange={(open) => {
+          setIsMismatchConfirmDialogOpen(open);
+          if (!open) { // If dialog is closed (e.g. by Esc or overlay click)
+            setIsProcessing(false); 
+            setProgress(0);
+          }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Niezgodne sumy</AlertDialogTitle>
+            <AlertDialogDescription>
+              Suma wybranych wpisów bankowych ({formatCurrency(mismatchConfirmData?.bankSum || 0)}) 
+              różni się od sumy wybranych wpisów Ziher ({formatCurrency(mismatchConfirmData?.ziherSum || 0)}).
+              <br />
+              Czy na pewno chcesz je powiązać?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { 
+              setIsMismatchConfirmDialogOpen(false); 
+              setIsProcessing(false); 
+              setProgress(0);
+            }}>Anuluj</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (mismatchConfirmData) {
+                await updateProgress(85); // Continue progress
+                executeManualMatch(mismatchConfirmData.bankIds, mismatchConfirmData.ziherIds, mismatchConfirmData.bankSum, mismatchConfirmData.ziherSum);
+                await updateProgress(100); // Finish progress
+                 // setIsProcessing is handled by executeManualMatch
+              }
+              setIsMismatchConfirmDialogOpen(false);
+              // No need to call setIsProcessing(false) here, executeManualMatch does it.
+              // However, if executeManualMatch is not called (e.g. mismatchConfirmData is null), ensure it's handled.
+              // This should be okay as mismatchConfirmData is set before opening.
+            }}>Powiąż mimo to</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

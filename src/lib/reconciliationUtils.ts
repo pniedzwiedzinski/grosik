@@ -42,6 +42,9 @@ export const autoMatchEntries = (
             type: 'auto',
             bankEntryIds: [bankEntry.id],
             ziherEntryIds: [ziherEntry.id],
+            bankSumInMatch: bankEntry.amount,
+            ziherSumInMatch: ziherEntry.amount,
+            isDiscrepancy: bankEntry.amount.toFixed(2) !== ziherEntry.amount.toFixed(2), // For auto-matches, sums are typically equal by definition of the match
           });
 
           if (potentialMatches.length === 0) {
@@ -58,7 +61,9 @@ export const manuallyMatchEntries = (
   selectedBankIds: string[],
   selectedZiherIds: string[],
   allBankEntries: TransactionEntry[],
-  allZiherEntries: TransactionEntry[]
+  allZiherEntries: TransactionEntry[],
+  sumBankSelected: number,
+  sumZiherSelected: number
 ): { updatedBankEntries: TransactionEntry[]; updatedZiherEntries: TransactionEntry[]; newMatch: MatchGroup | null } => {
   
   const bankEntriesToMatchAreUnmatched = selectedBankIds.every(id => {
@@ -118,6 +123,9 @@ export const manuallyMatchEntries = (
     type: 'manual',
     bankEntryIds: selectedBankIds,
     ziherEntryIds: selectedZiherIds,
+    bankSumInMatch: sumBankSelected,
+    ziherSumInMatch: sumZiherSelected,
+    isDiscrepancy: sumBankSelected.toFixed(2) !== sumZiherSelected.toFixed(2),
   };
 
   return { updatedBankEntries: finalBankEntries, updatedZiherEntries: finalZiherEntries, newMatch };

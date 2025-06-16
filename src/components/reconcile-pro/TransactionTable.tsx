@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { TransactionEntry } from '@/types/reconciliation';
+import type { TransactionEntry, MatchGroup } from '@/types/reconciliation';
 import {
   Table,
   TableHeader,
@@ -24,9 +24,10 @@ interface TransactionTableProps {
   selectedIds: string[];
   onRowSelect: (id: string, isSelected: boolean) => void;
   isProcessing: boolean;
+  matchGroups: MatchGroup[];
 }
 
-const statusTranslations: Record<TransactionEntry['status'], string> = {
+const statusTranslations: Record<string, string> = { // Allow string for dynamic statuses like 'matched-discrepancy' if used
   matched: 'Powiązano',
   unmatched: 'Niepowiązane',
   candidate: 'Kandydat',
@@ -38,24 +39,50 @@ export function TransactionTable({
   entries,
   selectedIds,
   onRowSelect,
-  isProcessing
+  isProcessing,
+  matchGroups,
 }: TransactionTableProps) {
   
-  const getStatusColor = (status: TransactionEntry['status']) => {
-    switch (status) {
-      case 'matched':
-        return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
-      case 'candidate':
-        return 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700';
-      case 'unmatched':
-      default:
-        return 'bg-red-50 dark:bg-red-900/50 border-red-200 dark:border-red-700/50';
+  const getRowStyle = (entry: TransactionEntry) => {
+    if (entry.status === 'matched' && entry.matchId) {
+      const match = matchGroups.find(mg => mg.id === entry.matchId);
+      if (match?.isDiscrepancy) {
+        return 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-200/50 dark:hover:bg-yellow-800/50';
+      }
+      return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700 hover:bg-green-200/50 dark:hover:bg-green-800/50';
     }
+    if (entry.status === 'candidate') {
+      return 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-700/50 hover:bg-blue-100/50 dark:hover:bg-blue-800/50';
+    }
+    // unmatched or other
+    return 'bg-red-50 dark:bg-red-900/50 border-red-200 dark:border-red-700/50 hover:bg-red-100/50 dark:hover:bg-red-800/50';
   };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(amount);
   };
+
+  const getAmountDisplay = (entry: TransactionEntry) => {
+    if (entry.status === 'matched' && entry.matchId) {
+      const match = matchGroups.find(mg => mg.id === entry.matchId);
+      if (match?.isDiscrepancy) {
+        const otherSourceSum = entry.source === 'bank' ? match.ziherSumInMatch : match.bankSumInMatch;
+        const otherSourceLabel = entry.source === 'bank' ? 'Ziher' : 'Bank';
+        if (typeof otherSourceSum === 'number') {
+          return (
+            <>
+              {formatCurrency(entry.amount)}
+              <span className="text-xs text-muted-foreground ml-1">
+                ({otherSourceLabel}: {formatCurrency(otherSourceSum)})
+              </span>
+            </>
+          );
+        }
+      }
+    }
+    return formatCurrency(entry.amount);
+  };
+
 
   return (
     <Card className="shadow-lg flex flex-col h-full">
@@ -88,7 +115,7 @@ export function TransactionTable({
               {entries.map((entry) => (
                 <TableRow
                   key={entry.id}
-                  className={`transition-colors duration-200 ${getStatusColor(entry.status)} ${selectedIds.includes(entry.id) ? 'ring-2 ring-accent ring-inset' : ''}`}
+                  className={`transition-colors duration-200 ${getRowStyle(entry)} ${selectedIds.includes(entry.id) ? 'ring-2 ring-accent ring-inset' : ''}`}
                   onClick={() => onRowSelect(entry.id, !selectedIds.includes(entry.id))}
                   aria-selected={selectedIds.includes(entry.id)}
                 >
@@ -97,11 +124,12 @@ export function TransactionTable({
                       checked={selectedIds.includes(entry.id)}
                       onCheckedChange={(checked) => onRowSelect(entry.id, !!checked)}
                       aria-label={`Zaznacz transakcję ${entry.description}`}
+                      disabled={entry.status === 'matched' && title.toLowerCase().includes("niepowiązane")} // Prevent selecting matched items from "Unmatched" tab if they somehow appear
                     />
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{entry.date}</TableCell>
                   <TableCell className="max-w-[150px] md:max-w-[200px] truncate" title={entry.description}>{entry.description}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(entry.amount)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{getAmountDisplay(entry)}</TableCell>
                   {title.toLowerCase().includes("niepowiązane") && <TableCell><Badge variant={entry.source === 'bank' ? 'default' : 'secondary'}>{entry.source}</Badge></TableCell>}
                   <TableCell>
                     {entry.status === 'matched' && entry.matchedEntryDetails && entry.matchedEntryDetails.length > 0 ? (
@@ -126,7 +154,11 @@ export function TransactionTable({
                         </PopoverContent>
                       </Popover>
                     ) : (
-                      <Badge variant={entry.status === 'unmatched' ? 'destructive' : 'outline'} className="capitalize">
+                      <Badge 
+                        variant={entry.status === 'unmatched' ? 'destructive' : entry.status === 'candidate' ? 'default' : 'outline'} 
+                        className="capitalize"
+                        style={entry.status === 'candidate' ? {backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))'} : {}}
+                      >
                         {statusTranslations[entry.status] || entry.status}
                       </Badge>
                     )}

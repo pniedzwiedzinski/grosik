@@ -16,4 +16,7 @@ export interface MatchGroup {
   type: 'auto' | 'manual';
   bankEntryIds: string[];
   ziherEntryIds: string[];
+  bankSumInMatch?: number; 
+  ziherSumInMatch?: number; 
+  isDiscrepancy?: boolean; 
 }
