@@ -33,7 +33,7 @@ export const parseCsv = (
       );
     }
   } else { // source === 'bank'
-    dateIndex = rawHeaders.findIndex(h => h === 'zaksięgowano'); // Corrected to lowercase
+    dateIndex = rawHeaders.findIndex(h => h === 'zaksięgowano');
     descriptionPart1Index = rawHeaders.findIndex(h => h === 'tytuł');
     amountIndex = rawHeaders.findIndex(h => h === 'kwota');
 
@@ -46,6 +46,8 @@ export const parseCsv = (
   
   const entries: TransactionEntry[] = [];
   for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '') continue; // Skip empty lines
+
     // Remove quotes from individual values
     const values = lines[i].split(separator).map(v => v.trim().replace(/^"|"$/g, ''));
 
@@ -57,12 +59,10 @@ export const parseCsv = (
       incomeIndex, 
       expenseIndex
     );
-    // Ensure all necessary columns are present based on their found indices
-    if (values.length <= maxRequiredIndex || 
-        (source === 'bank' && (dateIndex === -1 || descriptionPart1Index === -1 || amountIndex === -1)) ||
-        (source === 'bookkeeping' && (dateIndex === -1 || descriptionPart1Index === -1 || descriptionPart2Index === -1 || incomeIndex === -1 || expenseIndex === -1))) {
-        // This condition is technically covered by the header check, but as a safeguard for row processing:
-        // console.warn(`Skipping row with insufficient columns or headers not found: ${lines[i]}`);
+    
+    if (values.length <= maxRequiredIndex) {
+        // This check is a safeguard. The primary header check should catch missing headers.
+        // console.warn(`Skipping row with insufficient columns: ${lines[i]}. Expected at least ${maxRequiredIndex + 1} columns, got ${values.length}. Headers: ${rawHeaders.join(',')}`);
         continue;
     }
 
@@ -80,7 +80,6 @@ export const parseCsv = (
 
       let amount: number;
       if (source === 'bookkeeping') {
-        // Replace comma with dot for decimal, then parse
         const incomeValueStr = values[incomeIndex]?.trim().replace(',', '.') || '0';
         const expenseValueStr = values[expenseIndex]?.trim().replace(',', '.') || '0';
         const incomeValue = parseFloat(incomeValueStr);
@@ -103,10 +102,11 @@ export const parseCsv = (
         amount,
         source,
         status: 'unmatched',
-        originalRowData: lines[i].split(separator).map(v => v.trim()), // Store original, non-processed values
+        originalRowData: lines[i].split(separator).map(v => v.trim()), 
+        matchedEntryDetails: [],
       });
     } catch (error: any) {
-      console.error(`Error parsing row: ${lines[i]}. Error: ${error.message}`);
+      // console.error(`Error parsing row: ${lines[i]}. Error: ${error.message}`);
     }
   }
   return entries;
