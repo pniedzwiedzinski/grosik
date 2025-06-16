@@ -370,17 +370,10 @@ export default function ReconcileProPage() {
     }
   };
   
-  const canManualMatch =
-    selectedBankEntryIds.length > 0 &&
-    selectedZiherEntryIds.length > 0 &&
-    selectedBankEntryIds.every(id => bankEntries.find(e => e.id === id)?.status === 'unmatched') &&
-    selectedZiherEntryIds.every(id => ziherEntries.find(e => e.id === id)?.status === 'unmatched');
-
-  const canUnmatch = [...selectedBankEntryIds, ...selectedZiherEntryIds].some(id => {
-    const bankEntry = bankEntries.find(e => e.id === id && e.status === 'matched');
-    const ziherEntry = ziherEntries.find(e => e.id === id && e.status === 'matched');
-    return bankEntry || ziherEntry;
-  });
+  const handleDeselectAll = useCallback(() => {
+    setSelectedBankEntryIds([]);
+    setSelectedZiherEntryIds([]);
+  }, []);
 
   const showFileUpload = bankEntries.length === 0 && ziherEntries.length === 0;
   const showTransactionData = bankEntries.length > 0 || ziherEntries.length > 0;
@@ -466,9 +459,12 @@ export default function ReconcileProPage() {
             <ActionToolbar
               onManualMatch={handleManualMatch}
               onUnmatch={handleUnmatch}
-              canManualMatch={canManualMatch}
-              canUnmatch={canUnmatch}
               isProcessing={isProcessing}
+              selectedBankEntryIds={selectedBankEntryIds}
+              selectedZiherEntryIds={selectedZiherEntryIds}
+              bankEntries={bankEntries}
+              ziherEntries={ziherEntries}
+              onDeselectAll={handleDeselectAll}
             />
           </>
         )}
@@ -608,3 +604,4 @@ export default function ReconcileProPage() {
     </div>
   );
 }
+
