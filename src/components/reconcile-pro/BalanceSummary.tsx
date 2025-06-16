@@ -10,15 +10,18 @@ interface BalanceSummaryProps {
   difference: number;
 }
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(amount);
-};
-
 // A number is effectively zero if its absolute value is less than half of the smallest currency unit (e.g., 0.005 for PLN)
 // This handles floating point inaccuracies that might result in values like -0.00000001.
 const isEffectivelyZero = (amount: number): boolean => {
   return Math.abs(amount) < 0.005; 
 };
+
+const formatCurrency = (amount: number) => {
+  // If the amount is effectively zero, format 0 to avoid displaying "-0,00 zł"
+  const displayAmount = isEffectivelyZero(amount) ? 0 : amount;
+  return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(displayAmount);
+};
+
 
 export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSummaryProps) {
   return (
@@ -58,3 +61,4 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSum
     </Card>
   );
 }
+
