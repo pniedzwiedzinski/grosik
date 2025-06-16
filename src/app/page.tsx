@@ -75,14 +75,19 @@ export default function ReconcileProPage() {
       setSelectedBookkeepingEntryIds([]);
       setMatchGroups([]);
 
-      toast({ title: "Files Processed", description: "CSV files have been parsed." });
+      if (newBankEntries.length > 0 || newBookkeepingEntries.length > 0) {
+        toast({ title: "Files Processed", description: "CSV files have been parsed." });
+      } else {
+        toast({ title: "No Data Processed", description: "Please upload at least one file.", variant: "destructive" });
+      }
+      
     } catch (error: any) {
       toast({
         title: "Error Processing Files",
         description: error.message || "Could not parse CSV files.",
         variant: "destructive",
       });
-      setBankEntries(prev => bankFile ? newBankEntries : prev);
+      setBankEntries(prev => bankFile ? newBankEntries : prev); // Keep previous if only one file caused error and other was fine.
       setBookkeepingEntries(prev => bookkeepingFile ? newBookkeepingEntries : prev);
     } finally {
       await updateProgress(100);
@@ -208,11 +213,15 @@ export default function ReconcileProPage() {
   });
   const canAutoMatch = bankEntries.length > 0 && bookkeepingEntries.length > 0 && (bankEntries.some(e => e.status === 'unmatched') || bookkeepingEntries.some(e => e.status === 'unmatched'));
 
+  const showFileUpload = bankEntries.length === 0 && bookkeepingEntries.length === 0;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <ReconcileProHeader />
       <main className="flex-grow container mx-auto px-4 md:px-8 pb-8">
-        <FileUploadArea onFilesProcessed={handleFilesProcessed} />
+        {showFileUpload && (
+          <FileUploadArea onFilesProcessed={handleFilesProcessed} />
+        )}
         
         {isProcessing && (
           <div className="my-4">
@@ -221,7 +230,7 @@ export default function ReconcileProPage() {
           </div>
         )}
 
-        {(bankEntries.length > 0 || bookkeepingEntries.length > 0) && !isProcessing && (
+        {!showFileUpload && !isProcessing && (
           <ActionToolbar
             onAutoMatch={handleAutoMatch}
             onManualMatch={handleManualMatch}
@@ -234,7 +243,7 @@ export default function ReconcileProPage() {
           />
         )}
 
-        {bankEntries.length === 0 && bookkeepingEntries.length === 0 && !isProcessing && (
+        {showFileUpload && !isProcessing && (
           <Alert className="mt-6">
             <FileWarning className="h-4 w-4" />
             <AlertTitle>Getting Started</AlertTitle>
@@ -244,7 +253,7 @@ export default function ReconcileProPage() {
           </Alert>
         )}
         
-        {(bankEntries.length > 0 || bookkeepingEntries.length > 0) && !isProcessing && (
+        {!showFileUpload && !isProcessing && (
           <Tabs defaultValue="unmatched" className="mt-6 w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="unmatched">Unmatched</TabsTrigger>
