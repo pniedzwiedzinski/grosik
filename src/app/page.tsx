@@ -8,6 +8,7 @@ import { autoMatchEntries, manuallyMatchEntries, unmatchEntriesByMatchId } from 
 import { ReconcileProHeader } from '@/components/reconcile-pro/ReconcileProHeader';
 import { FileUploadArea } from '@/components/reconcile-pro/FileUploadArea';
 import { ActionToolbar } from '@/components/reconcile-pro/ActionToolbar';
+import { BalanceSummary } from '@/components/reconcile-pro/BalanceSummary';
 import { TransactionTable } from '@/components/reconcile-pro/TransactionTable';
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +30,10 @@ export default function ReconcileProPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const [bankTotal, setBankTotal] = useState(0);
+  const [bookkeepingTotal, setBookkeepingTotal] = useState(0);
+  const [difference, setDifference] = useState(0);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,6 +41,14 @@ export default function ReconcileProPage() {
     const unmatchedBook = bookkeepingEntries.filter(e => e.status === 'unmatched');
     const combined = [...unmatchedBank, ...unmatchedBook].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     setUnmatchedCombinedEntries(combined);
+  }, [bankEntries, bookkeepingEntries]);
+
+  useEffect(() => {
+    const newBankTotal = bankEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const newBookkeepingTotal = bookkeepingEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    setBankTotal(newBankTotal);
+    setBookkeepingTotal(newBookkeepingTotal);
+    setDifference(newBankTotal - newBookkeepingTotal);
   }, [bankEntries, bookkeepingEntries]);
 
   const updateProgress = (value: number) => {
@@ -243,16 +256,23 @@ export default function ReconcileProPage() {
         )}
 
         {!showFileUpload && !isProcessing && (
-          <ActionToolbar
-            onAutoMatch={handleAutoMatch}
-            onManualMatch={handleManualMatch}
-            onUnmatch={handleUnmatch}
-            onReset={handleReset}
-            canAutoMatch={canAutoMatch}
-            canManualMatch={canManualMatch}
-            canUnmatch={canUnmatch}
-            isProcessing={isProcessing}
-          />
+          <>
+            <BalanceSummary
+              bankTotal={bankTotal}
+              bookkeepingTotal={bookkeepingTotal}
+              difference={difference}
+            />
+            <ActionToolbar
+              onAutoMatch={handleAutoMatch}
+              onManualMatch={handleManualMatch}
+              onUnmatch={handleUnmatch}
+              onReset={handleReset}
+              canAutoMatch={canAutoMatch}
+              canManualMatch={canManualMatch}
+              canUnmatch={canUnmatch}
+              isProcessing={isProcessing}
+            />
+          </>
         )}
 
         {showFileUpload && !isProcessing && (
