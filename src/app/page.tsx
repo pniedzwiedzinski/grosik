@@ -245,12 +245,21 @@ export default function ReconcileProPage() {
         )}
         
         {(bankEntries.length > 0 || bookkeepingEntries.length > 0) && !isProcessing && (
-          <Tabs defaultValue="bank" className="mt-6 w-full">
+          <Tabs defaultValue="unmatched" className="mt-6 w-full">
             <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="unmatched">Unmatched</TabsTrigger>
               <TabsTrigger value="bank">Bank</TabsTrigger>
               <TabsTrigger value="bookkeeping">Bookkeeping</TabsTrigger>
-              <TabsTrigger value="unmatched">Unmatched</TabsTrigger>
             </TabsList>
+            <TabsContent value="unmatched" className="mt-4">
+              <TransactionTable
+                title="Unmatched Entries"
+                entries={unmatchedCombinedEntries}
+                selectedIds={[...selectedBankEntryIds, ...selectedBookkeepingEntryIds]} 
+                onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
+                isProcessing={isProcessing}
+              />
+            </TabsContent>
             <TabsContent value="bank" className="mt-4">
               <TransactionTable
                 title="Bank Entries"
@@ -269,15 +278,6 @@ export default function ReconcileProPage() {
                 isProcessing={isProcessing}
               />
             </TabsContent>
-            <TabsContent value="unmatched" className="mt-4">
-              <TransactionTable
-                title="Unmatched Entries"
-                entries={unmatchedCombinedEntries}
-                selectedIds={[...selectedBankEntryIds, ...selectedBookkeepingEntryIds]} 
-                onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
-                isProcessing={isProcessing}
-              />
-            </TabsContent>
           </Tabs>
         )}
       </main>
@@ -287,7 +287,3 @@ export default function ReconcileProPage() {
     </div>
   );
 }
-
-    
-
-    
