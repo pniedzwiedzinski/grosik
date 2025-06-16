@@ -134,7 +134,7 @@ export default function ReconcileProPage() {
 
   const handleAutoMatch = useCallback(async () => {
     if (bankEntries.length === 0 || ziherEntries.length === 0) {
-      toast({ title: "Niewystarczające dane", description: "Proszę przesłać pliki z historią z banku i Ziher, aby przeprowadzić automatyczne uzgadnianie.", variant: "destructive" });
+      toast({ title: "Niewystarczające dane", description: "Proszę przesłać pliki z historią z banku i Ziher, aby przeprowadzić automatyczne powiązanie.", variant: "destructive" });
       return;
     }
     setIsProcessing(true);
@@ -145,7 +145,7 @@ export default function ReconcileProPage() {
     setBankEntries(updatedBankEntries);
     setZiherEntries(updatedZiherEntries);
     setMatchGroups(prev => [...prev.filter(mg => mg.type === 'manual'), ...newMatches]); 
-    toast({ title: "Automatyczne uzgadnianie zakończone", description: `Znaleziono ${newMatches.length} nowych automatycznych dopasowań.` });
+    toast({ title: "Automatyczne powiązanie zakończone", description: `Znaleziono ${newMatches.length} nowych automatycznych powiązań.` });
     await updateProgress(100);
     setTimeout(() => setIsProcessing(false), 500);
   }, [bankEntries, ziherEntries, toast]);
@@ -165,11 +165,11 @@ export default function ReconcileProPage() {
     setZiherEntries(updatedZiherEntries);
     if (newMatch) {
       setMatchGroups(prev => [...prev, newMatch]);
-      toast({ title: "Ręczne uzgadnianie zakończone sukcesem", description: "Wybrane wpisy zostały uzgodnione." });
+      toast({ title: "Ręczne powiązanie zakończone sukcesem", description: "Wybrane wpisy zostały powiązane." });
     } else {
        toast({ 
-         title: "Ręczne uzgadnianie nie powiodło się", 
-         description: "Nie można uzgodnić. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'nieuzgodnione'.", 
+         title: "Ręczne powiązanie nie powiodło się", 
+         description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niepowiązane'.", 
          variant: "destructive"
        });
     }
@@ -193,7 +193,7 @@ export default function ReconcileProPage() {
     });
 
     if (matchIdsToUnmatch.size === 0) {
-      toast({ title: "Nie wybrano dopasowania", description: "Proszę wybrać uzgodnione wpisy, aby je rozłączyć.", variant: "destructive" });
+      toast({ title: "Nie wybrano powiązania", description: "Proszę wybrać powiązane wpisy, aby je rozłączyć.", variant: "destructive" });
       setIsProcessing(false);
       return;
     }
@@ -306,7 +306,7 @@ export default function ReconcileProPage() {
             <FileWarning className="h-4 w-4" />
             <AlertTitle>Rozpocznij</AlertTitle>
             <AlertDescription>
-              Prześlij historię z banku i pliki CSV z Ziher powyżej, aby rozpocząć uzgadnianie transakcji.
+              Prześlij historię z banku i pliki CSV z Ziher powyżej, aby rozpocząć powiązywanie transakcji.
             </AlertDescription>
           </Alert>
         )}
@@ -314,13 +314,13 @@ export default function ReconcileProPage() {
         {showTransactionData && !isProcessing && (
           <Tabs defaultValue="unmatched" className="mt-6 w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="unmatched">Nieuzgodnione</TabsTrigger>
+              <TabsTrigger value="unmatched">Niepowiązane</TabsTrigger>
               <TabsTrigger value="bank">Bank</TabsTrigger>
               <TabsTrigger value="ziher">Ziher</TabsTrigger>
             </TabsList>
             <TabsContent value="unmatched" className="mt-4">
               <TransactionTable
-                title="Nieuzgodnione Wpisy"
+                title="Niepowiązane Wpisy"
                 entries={unmatchedCombinedEntries}
                 selectedIds={[...selectedBankEntryIds, ...selectedZiherEntryIds]} 
                 onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}

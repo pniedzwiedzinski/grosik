@@ -36,7 +36,7 @@ export function ActionToolbar({
           className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
         >
           <Wand2 className="mr-2 h-4 w-4" />
-          Uzgodnij Automatycznie
+          Powiąż Automatycznie
         </Button>
         <Button
           onClick={onManualMatch}
@@ -44,7 +44,7 @@ export function ActionToolbar({
           className="bg-accent hover:bg-accent/90 text-accent-foreground"
         >
           <Link2 className="mr-2 h-4 w-4" />
-          Uzgodnij Wybrane Ręcznie
+          Powiąż Wybrane Ręcznie
         </Button>
         <Button
           onClick={onUnmatch}

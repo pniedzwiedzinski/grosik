@@ -27,8 +27,8 @@ interface TransactionTableProps {
 }
 
 const statusTranslations: Record<TransactionEntry['status'], string> = {
-  matched: 'Uzgodniono',
-  unmatched: 'Nieuzgodnione',
+  matched: 'Powiązano',
+  unmatched: 'Niepowiązane',
   candidate: 'Kandydat',
 };
 
@@ -80,7 +80,7 @@ export function TransactionTable({
                 <TableHead>Data</TableHead>
                 <TableHead>Opis</TableHead>
                 <TableHead className="text-right">Kwota</TableHead>
-                {title.toLowerCase().includes("nieuzgodnione") && <TableHead>Źródło</TableHead>}
+                {title.toLowerCase().includes("niepowiązane") && <TableHead>Źródło</TableHead>}
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -102,7 +102,7 @@ export function TransactionTable({
                   <TableCell className="whitespace-nowrap">{entry.date}</TableCell>
                   <TableCell className="max-w-[150px] md:max-w-[200px] truncate" title={entry.description}>{entry.description}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(entry.amount)}</TableCell>
-                  {title.toLowerCase().includes("nieuzgodnione") && <TableCell><Badge variant={entry.source === 'bank' ? 'default' : 'secondary'}>{entry.source}</Badge></TableCell>}
+                  {title.toLowerCase().includes("niepowiązane") && <TableCell><Badge variant={entry.source === 'bank' ? 'default' : 'secondary'}>{entry.source}</Badge></TableCell>}
                   <TableCell>
                     {entry.status === 'matched' && entry.matchedEntryDetails && entry.matchedEntryDetails.length > 0 ? (
                       <Popover>
@@ -113,7 +113,7 @@ export function TransactionTable({
                         </PopoverTrigger>
                         <PopoverContent className="w-80 text-sm">
                           <div className="grid gap-2">
-                            <p className="font-semibold">Uzgodniono z:</p>
+                            <p className="font-semibold">Powiązano z:</p>
                             {entry.matchedEntryDetails.map(detail => (
                                <div key={detail.id} className="border-t pt-2 mt-1">
                                 <p><strong>Opis:</strong> {detail.description}</p>
