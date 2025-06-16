@@ -395,9 +395,7 @@ export default function ReconcileProPage() {
           </Tabs>
         )}
       </main>
-      <footer className="py-4 border-t border-border text-center text-sm text-muted-foreground">
-        Grosik &copy; {new Date().getFullYear()}
-      </footer>
+
     </div>
   );
 }
