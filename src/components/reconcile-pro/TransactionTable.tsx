@@ -98,15 +98,17 @@ export function TransactionTable({
 
   return (
     <Card className="shadow-lg flex flex-col h-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 md:px-6">
-        <div className="flex items-center gap-2">
-            {title.toLowerCase().includes('bank') ? <Banknote className="w-5 h-5 text-primary"/> : title.toLowerCase().includes('ziher') ? <BookOpenText className="w-5 h-5 text-primary"/> : <Info className="w-5 h-5 text-primary"/> }
-          <CardTitle className="text-lg font-headline">
-            {title}
-          </CardTitle>
-          <Badge variant="secondary">{entries.length}</Badge>
+      <CardHeader className="flex flex-col space-y-3 pb-3 pt-4 px-4 md:px-6">
+        <div className="flex flex-row items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+              {title.toLowerCase().includes('bank') ? <Banknote className="w-5 h-5 text-primary"/> : title.toLowerCase().includes('ziher') ? <BookOpenText className="w-5 h-5 text-primary"/> : <Info className="w-5 h-5 text-primary"/> }
+            <CardTitle className="text-lg font-headline">
+              {title}
+            </CardTitle>
+            <Badge variant="secondary">{entries.length}</Badge>
+          </div>
         </div>
-        <div className="relative ml-auto flex-1 md:grow-0 max-w-xs">
+        <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
