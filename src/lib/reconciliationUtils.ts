@@ -61,10 +61,22 @@ export const manuallyMatchEntries = (
   allBookkeepingEntries: TransactionEntry[]
 ): { updatedBankEntries: TransactionEntry[]; updatedBookkeepingEntries: TransactionEntry[]; newMatch: MatchGroup | null } => {
   
-  if (selectedBankIds.length === 0 || selectedBookkeepingIds.length === 0) {
+  // Safeguard: Ensure selections are from different sources and all selected items are currently unmatched.
+  const bankEntriesToMatchAreUnmatched = selectedBankIds.every(id => {
+    const entry = allBankEntries.find(e => e.id === id);
+    return entry && entry.status === 'unmatched';
+  });
+  const bookkeepingEntriesToMatchAreUnmatched = selectedBookkeepingIds.every(id => {
+    const entry = allBookkeepingEntries.find(e => e.id === id);
+    return entry && entry.status === 'unmatched';
+  });
+
+  if (selectedBankIds.length === 0 || 
+      selectedBookkeepingIds.length === 0 || 
+      !bankEntriesToMatchAreUnmatched || 
+      !bookkeepingEntriesToMatchAreUnmatched) {
     return { updatedBankEntries: allBankEntries, updatedBookkeepingEntries: allBookkeepingEntries, newMatch: null };
   }
-
 
   const matchId = `manual-${crypto.randomUUID()}`;
   const matchedBankEntriesDetails: Partial<TransactionEntry>[] = [];

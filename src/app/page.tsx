@@ -130,7 +130,11 @@ export default function ReconcileProPage() {
       setMatchGroups(prev => [...prev, newMatch]);
       toast({ title: "Manual Match Successful", description: "Selected entries have been matched." });
     } else {
-       toast({ title: "Manual Match Failed", description: "Could not match selected entries. Ensure you select entries from both bank and bookkeeping sources.", variant: "destructive"});
+       toast({ 
+         title: "Manual Match Failed", 
+         description: "Could not match selected entries. Ensure you select entries from both bank and bookkeeping sources, and that all selected entries are currently 'unmatched'.", 
+         variant: "destructive"
+       });
     }
     setSelectedBankEntryIds([]);
     setSelectedBookkeepingEntryIds([]);
@@ -208,7 +212,12 @@ export default function ReconcileProPage() {
     }
   };
   
-  const canManualMatch = selectedBankEntryIds.length > 0 && selectedBookkeepingEntryIds.length > 0;
+  const canManualMatch =
+    selectedBankEntryIds.length > 0 &&
+    selectedBookkeepingEntryIds.length > 0 &&
+    selectedBankEntryIds.every(id => bankEntries.find(e => e.id === id)?.status === 'unmatched') &&
+    selectedBookkeepingEntryIds.every(id => bookkeepingEntries.find(e => e.id === id)?.status === 'unmatched');
+
   const canUnmatch = [...selectedBankEntryIds, ...selectedBookkeepingEntryIds].some(id => {
     const bankEntry = bankEntries.find(e => e.id === id && e.status === 'matched');
     const bookEntry = bookkeepingEntries.find(e => e.id === id && e.status === 'matched');
