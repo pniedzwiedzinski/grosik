@@ -1,0 +1,135 @@
+"use client";
+
+import type { TransactionEntry } from '@/types/reconciliation';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Info, Banknote, BookOpenText } from 'lucide-react';
+
+interface TransactionTableProps {
+  title: string;
+  entries: TransactionEntry[];
+  selectedIds: string[];
+  onRowSelect: (id: string, isSelected: boolean) => void;
+  isProcessing: boolean;
+}
+
+export function TransactionTable({
+  title,
+  entries,
+  selectedIds,
+  onRowSelect,
+  isProcessing
+}: TransactionTableProps) {
+  
+  const getStatusColor = (status: TransactionEntry['status']) => {
+    switch (status) {
+      case 'matched':
+        return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
+      case 'candidate':
+        return 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700';
+      case 'unmatched':
+      default:
+        return 'bg-red-50 dark:bg-red-900/50 border-red-200 dark:border-red-700/50';
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+
+  return (
+    <Card className="shadow-lg flex flex-col h-full">
+      <CardHeader>
+        <CardTitle className="text-lg font-headline flex items-center gap-2">
+          {title.toLowerCase().includes('bank') ? <Banknote className="w-5 h-5 text-primary"/> : title.toLowerCase().includes('bookkeeping') ? <BookOpenText className="w-5 h-5 text-primary"/> : <Info className="w-5 h-5 text-primary"/> }
+          {title}
+          <Badge variant="secondary" className="ml-2">{entries.length}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0 flex-grow overflow-hidden">
+        <ScrollArea className="h-[calc(100vh-10rem-150px)] md:h-[calc(100vh-12rem-200px)] lg:h-[400px] xl:h-[500px]"> {/* Adjusted height */}
+          {entries.length === 0 && !isProcessing ? (
+            <div className="p-6 text-center text-muted-foreground">No transactions to display.</div>
+          ) : isProcessing && entries.length === 0 ? (
+             <div className="p-6 text-center text-muted-foreground">Processing...</div>
+          ) : (
+          <Table>
+            <TableHeader className="sticky top-0 bg-card z-10">
+              <TableRow>
+                <TableHead className="w-[50px]">Select</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                {title.toLowerCase().includes("unmatched") && <TableHead>Source</TableHead>}
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
+                <TableRow
+                  key={entry.id}
+                  className={`transition-colors duration-200 ${getStatusColor(entry.status)} ${selectedIds.includes(entry.id) ? 'ring-2 ring-accent ring-inset' : ''}`}
+                  onClick={() => onRowSelect(entry.id, !selectedIds.includes(entry.id))}
+                  aria-selected={selectedIds.includes(entry.id)}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.includes(entry.id)}
+                      onCheckedChange={(checked) => onRowSelect(entry.id, !!checked)}
+                      aria-label={`Select transaction ${entry.description}`}
+                    />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{entry.date}</TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={entry.description}>{entry.description}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(entry.amount)}</TableCell>
+                  {title.toLowerCase().includes("unmatched") && <TableCell><Badge variant={entry.source === 'bank' ? 'default' : 'secondary'}>{entry.source}</Badge></TableCell>}
+                  <TableCell>
+                    {entry.status === 'matched' && entry.matchedEntryDetails && entry.matchedEntryDetails.length > 0 ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="link" size="sm" className="p-0 h-auto text-green-600 dark:text-green-400 hover:underline">
+                            Matched
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 text-sm">
+                          <div className="grid gap-2">
+                            <p className="font-semibold">Matched with:</p>
+                            {entry.matchedEntryDetails.map(detail => (
+                               <div key={detail.id} className="border-t pt-2 mt-1">
+                                <p><strong>Desc:</strong> {detail.description}</p>
+                                <p><strong>Date:</strong> {detail.date}</p>
+                                <p><strong>Amount:</strong> {formatCurrency(detail.amount || 0)}</p>
+                                <p><strong>Source:</strong> {detail.source}</p>
+                               </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Badge variant={entry.status === 'unmatched' ? 'destructive' : 'outline'} className="capitalize">
+                        {entry.status}
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          )}
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}
