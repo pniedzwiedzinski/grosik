@@ -92,7 +92,44 @@ export const parseCsv = (
     }
 
     try {
-      const date = values[dateIndex]?.trim() || '';
+      let parsedDate: string | undefined = undefined;
+
+      if (source === 'bank') {
+        const rawDateValue = values[dateIndex]?.trim();
+        if (rawDateValue) {
+          const parts = rawDateValue.split('.');
+          if (parts.length === 3) {
+            const day = parts[0];
+            const month = parts[1];
+            const year = parts[2];
+            if (day.length === 2 && month.length === 2 && year.length === 4 && !isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
+              parsedDate = `${year}-${month}-${day}`;
+            } else {
+              continue; 
+            }
+          } else {
+            continue; 
+          }
+        } else {
+            continue;
+        }
+      } else { // source === 'ziher'
+        const rawDateValue = values[dateIndex]?.trim();
+        if (rawDateValue) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(rawDateValue)) {
+            const [yearNum, monthNum, dayNum] = rawDateValue.split('-').map(Number);
+            if (yearNum > 1900 && yearNum < 3000 && monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) { // Basic sanity check
+                 parsedDate = rawDateValue;
+            } else {
+                continue;
+            }
+          } else {
+            continue; 
+          }
+        } else {
+            continue;
+        }
+      }
       
       let description = '';
       if (source === 'ziher') {
@@ -128,13 +165,13 @@ export const parseCsv = (
         amount = parseFloat(processedAmountStr);
       }
       
-      if (!date || description === '' || isNaN(amount)) {
+      if (!parsedDate || description === '' || isNaN(amount)) {
         continue;
       }
 
       entries.push({
         id: `${source}-${crypto.randomUUID()}`,
-        date,
+        date: parsedDate,
         description,
         amount,
         source,
@@ -148,3 +185,4 @@ export const parseCsv = (
   }
   return entries;
 };
+
