@@ -10,12 +10,14 @@ import { FileUploadArea } from '@/components/reconcile-pro/FileUploadArea';
 import { ActionToolbar } from '@/components/reconcile-pro/ActionToolbar';
 import { BalanceSummary } from '@/components/reconcile-pro/BalanceSummary';
 import { TransactionTable } from '@/components/reconcile-pro/TransactionTable';
+import { TransactionFilter } from '@/components/reconcile-pro/TransactionFilter';
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileWarning } from 'lucide-react';
 
+type FilterMode = 'all' | 'income' | 'expenses';
 
 export default function ReconcileProPage() {
   const [bankEntries, setBankEntries] = useState<TransactionEntry[]>([]);
@@ -34,22 +36,40 @@ export default function ReconcileProPage() {
   const [ziherTotal, setZiherTotal] = useState(0);
   const [difference, setDifference] = useState(0);
 
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unmatchedBank = bankEntries.filter(e => e.status === 'unmatched');
-    const unmatchedZiher = ziherEntries.filter(e => e.status === 'unmatched');
-    const combined = [...unmatchedBank, ...unmatchedZiher].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    setUnmatchedCombinedEntries(combined);
-  }, [bankEntries, ziherEntries]);
+  const filterEntriesByMode = (entries: TransactionEntry[], mode: FilterMode): TransactionEntry[] => {
+    if (mode === 'income') {
+      return entries.filter(e => e.amount > 0);
+    }
+    if (mode === 'expenses') {
+      return entries.filter(e => e.amount < 0);
+    }
+    return entries; // 'all'
+  };
 
   useEffect(() => {
-    const newBankTotal = bankEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    const newZiherTotal = ziherEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const currentlyFilteredBankEntries = filterEntriesByMode(bankEntries, filterMode);
+    const currentlyFilteredZiherEntries = filterEntriesByMode(ziherEntries, filterMode);
+
+    const unmatchedBank = currentlyFilteredBankEntries.filter(e => e.status === 'unmatched');
+    const unmatchedZiher = currentlyFilteredZiherEntries.filter(e => e.status === 'unmatched');
+    const combined = [...unmatchedBank, ...unmatchedZiher].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    setUnmatchedCombinedEntries(combined);
+  }, [bankEntries, ziherEntries, filterMode]);
+
+  useEffect(() => {
+    const currentlyFilteredBankEntries = filterEntriesByMode(bankEntries, filterMode);
+    const currentlyFilteredZiherEntries = filterEntriesByMode(ziherEntries, filterMode);
+    
+    const newBankTotal = currentlyFilteredBankEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const newZiherTotal = currentlyFilteredZiherEntries.reduce((sum, entry) => sum + entry.amount, 0);
     setBankTotal(newBankTotal);
     setZiherTotal(newZiherTotal);
     setDifference(newBankTotal - newZiherTotal);
-  }, [bankEntries, ziherEntries]);
+  }, [bankEntries, ziherEntries, filterMode]);
 
   const updateProgress = (value: number) => {
     setProgress(value);
@@ -87,6 +107,7 @@ export default function ReconcileProPage() {
       setSelectedBankEntryIds([]);
       setSelectedZiherEntryIds([]);
       setMatchGroups([]);
+      setFilterMode('all');
 
       let fileProcessedSuccessfully = false;
       if (bankFile) {
@@ -140,6 +161,7 @@ export default function ReconcileProPage() {
     setIsProcessing(true);
     setProgress(0);
     await updateProgress(30);
+    // Auto-match operates on full, unfiltered lists
     const { updatedBankEntries, updatedZiherEntries, newMatches } = autoMatchEntries(bankEntries, ziherEntries);
     await updateProgress(70);
     setBankEntries(updatedBankEntries);
@@ -154,6 +176,7 @@ export default function ReconcileProPage() {
     setIsProcessing(true);
     setProgress(0);
     await updateProgress(30);
+    // Manual match operates on full, unfiltered lists using selected IDs
     const { updatedBankEntries, updatedZiherEntries, newMatch } = manuallyMatchEntries(
       selectedBankEntryIds,
       selectedZiherEntryIds,
@@ -185,6 +208,7 @@ export default function ReconcileProPage() {
     setProgress(0);
     await updateProgress(20);
     const matchIdsToUnmatch = new Set<string>();
+    // Use full lists to find entries by ID
     [...selectedBankEntryIds, ...selectedZiherEntryIds].forEach(id => {
       const bankEntry = bankEntries.find(e => e.id === id);
       if (bankEntry?.matchId) matchIdsToUnmatch.add(bankEntry.matchId);
@@ -230,13 +254,21 @@ export default function ReconcileProPage() {
     setMatchGroups([]);
     setIsProcessing(false);
     setProgress(0);
+    setFilterMode('all');
     toast({ title: "Reset zakończony", description: "Wszystkie dane zostały wyczyszczone."});
   }, [toast]);
 
   const handleRowSelect = (source: 'bank' | 'ziher' | 'unmatched', id: string, isSelected: boolean) => {
-    const entry = source === 'bank' ? bankEntries.find(e => e.id === id) :
-                  source === 'ziher' ? ziherEntries.find(e => e.id === id) :
-                  unmatchedCombinedEntries.find(e => e.id === id);
+    // Find entry in the *filtered* lists if it's from 'unmatched'
+    // or from the original lists if from 'bank' or 'ziher' tab, then get its true source
+    let entry: TransactionEntry | undefined;
+    if (source === 'unmatched') {
+        entry = unmatchedCombinedEntries.find(e => e.id === id);
+    } else if (source === 'bank') {
+        entry = bankEntries.find(e => e.id === id); // Original list for ID consistency
+    } else { // source === 'ziher'
+        entry = ziherEntries.find(e => e.id === id); // Original list
+    }
 
     if (!entry) return;
 
@@ -288,6 +320,10 @@ export default function ReconcileProPage() {
               ziherTotal={ziherTotal}
               difference={difference}
             />
+            <TransactionFilter 
+              currentFilterMode={filterMode}
+              onFilterChange={setFilterMode}
+            />
             <ActionToolbar
               onAutoMatch={handleAutoMatch}
               onManualMatch={handleManualMatch}
@@ -321,7 +357,7 @@ export default function ReconcileProPage() {
             <TabsContent value="unmatched" className="mt-4">
               <TransactionTable
                 title="Niepowiązane Wpisy"
-                entries={unmatchedCombinedEntries}
+                entries={unmatchedCombinedEntries} // Already filtered
                 selectedIds={[...selectedBankEntryIds, ...selectedZiherEntryIds]} 
                 onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
                 isProcessing={isProcessing}
@@ -330,7 +366,7 @@ export default function ReconcileProPage() {
             <TabsContent value="bank" className="mt-4">
               <TransactionTable
                 title="Wpisy Bankowe"
-                entries={bankEntries}
+                entries={filterEntriesByMode(bankEntries, filterMode)}
                 selectedIds={selectedBankEntryIds}
                 onRowSelect={(id, isSelected) => handleRowSelect('bank', id, isSelected)}
                 isProcessing={isProcessing}
@@ -339,7 +375,7 @@ export default function ReconcileProPage() {
             <TabsContent value="ziher" className="mt-4">
               <TransactionTable
                 title="Wpisy Ziher"
-                entries={ziherEntries}
+                entries={filterEntriesByMode(ziherEntries, filterMode)}
                 selectedIds={selectedZiherEntryIds}
                 onRowSelect={(id, isSelected) => handleRowSelect('ziher', id, isSelected)}
                 isProcessing={isProcessing}
@@ -354,4 +390,3 @@ export default function ReconcileProPage() {
     </div>
   );
 }
-
