@@ -1,6 +1,10 @@
 
 "use client";
 
+// This component is no longer used as search inputs are embedded directly in tabs.
+// Keeping the file for now in case it's needed for a different global search in the future.
+// If not, it can be safely deleted.
+
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search } from 'lucide-react';
@@ -31,3 +35,5 @@ export function SearchToolbar({ searchQuery, onSearchQueryChange }: SearchToolba
     </Card>
   );
 }
+
+    

@@ -11,13 +11,13 @@ import { ActionToolbar } from '@/components/reconcile-pro/ActionToolbar';
 import { BalanceSummary } from '@/components/reconcile-pro/BalanceSummary';
 import { TransactionTable } from '@/components/reconcile-pro/TransactionTable';
 import { TransactionFilter } from '@/components/reconcile-pro/TransactionFilter';
-import { SearchToolbar } from '@/components/reconcile-pro/SearchToolbar'; // New Import
+import { Input } from "@/components/ui/input"; // Import Input
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileWarning } from 'lucide-react';
+import { FileWarning, Search } from 'lucide-react';
 
 type FilterMode = 'all' | 'income' | 'expenses';
 
@@ -60,7 +60,10 @@ export default function ReconcileProPage() {
   const [difference, setDifference] = useState(0);
 
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
-  const [searchQuery, setSearchQuery] = useState<string>(''); // New state for search
+  const [unmatchedSearchQuery, setUnmatchedSearchQuery] = useState<string>('');
+  const [bankSearchQuery, setBankSearchQuery] = useState<string>('');
+  const [ziherSearchQuery, setZiherSearchQuery] = useState<string>('');
+
 
   const [isMismatchConfirmDialogOpen, setIsMismatchConfirmDialogOpen] = useState(false);
   const [mismatchConfirmData, setMismatchConfirmData] = useState<{
@@ -92,29 +95,27 @@ export default function ReconcileProPage() {
     const modeFilteredBankEntries = filterEntriesByMode(bankEntries, filterMode);
     const modeFilteredZiherEntries = filterEntriesByMode(ziherEntries, filterMode);
 
-    const searchedBankEntries = searchFilterEntries(modeFilteredBankEntries, searchQuery);
-    const searchedZiherEntries = searchFilterEntries(modeFilteredZiherEntries, searchQuery);
+    const searchedBankForUnmatched = searchFilterEntries(modeFilteredBankEntries, unmatchedSearchQuery);
+    const searchedZiherForUnmatched = searchFilterEntries(modeFilteredZiherEntries, unmatchedSearchQuery);
 
-    const unmatchedBank = searchedBankEntries.filter(e => e.status === 'unmatched');
-    const unmatchedZiher = searchedZiherEntries.filter(e => e.status === 'unmatched');
+    const unmatchedBank = searchedBankForUnmatched.filter(e => e.status === 'unmatched');
+    const unmatchedZiher = searchedZiherForUnmatched.filter(e => e.status === 'unmatched');
     
     const combined = sortEntriesByDate([...unmatchedBank, ...unmatchedZiher]);
     setUnmatchedCombinedEntries(combined);
-  }, [bankEntries, ziherEntries, filterMode, searchQuery]); // Added searchQuery dependency
+  }, [bankEntries, ziherEntries, filterMode, unmatchedSearchQuery]);
 
+  // Effect for BalanceSummary totals - only depends on filterMode
   useEffect(() => {
     const modeFilteredBankEntries = filterEntriesByMode(bankEntries, filterMode);
     const modeFilteredZiherEntries = filterEntriesByMode(ziherEntries, filterMode);
-
-    const searchedBankEntries = searchFilterEntries(modeFilteredBankEntries, searchQuery);
-    const searchedZiherEntries = searchFilterEntries(modeFilteredZiherEntries, searchQuery);
     
-    const newBankTotal = searchedBankEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    const newZiherTotal = searchedZiherEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const newBankTotal = modeFilteredBankEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const newZiherTotal = modeFilteredZiherEntries.reduce((sum, entry) => sum + entry.amount, 0);
     setBankTotal(newBankTotal);
     setZiherTotal(newZiherTotal);
     setDifference(newBankTotal - newZiherTotal);
-  }, [bankEntries, ziherEntries, filterMode, searchQuery]); // Added searchQuery dependency
+  }, [bankEntries, ziherEntries, filterMode]);
 
 
   const handleFilesProcessed = async (bankFile: File | null, ziherFile: File | null) => {
@@ -165,7 +166,10 @@ export default function ReconcileProPage() {
       setSelectedZiherEntryIds([]);
       setMatchGroups([]);
       setFilterMode('all');
-      setSearchQuery(''); // Reset search query on new file processing
+      setUnmatchedSearchQuery('');
+      setBankSearchQuery('');
+      setZiherSearchQuery('');
+
 
       const sortedNewBankEntries = sortEntriesByDate(newBankEntries);
       const sortedNewZiherEntries = sortEntriesByDate(newZiherEntries);
@@ -338,7 +342,9 @@ export default function ReconcileProPage() {
     setUnmatchedCombinedEntries([]);
     setMatchGroups([]);
     setFilterMode('all');
-    setSearchQuery(''); // Reset search query
+    setUnmatchedSearchQuery('');
+    setBankSearchQuery('');
+    setZiherSearchQuery('');
     await updateProgress(100);
     setTimeout(() => setIsProcessing(false), 300);
     toast({ title: "Reset zakończony", description: "Wszystkie dane zostały wyczyszczone."});
@@ -346,13 +352,12 @@ export default function ReconcileProPage() {
 
   const handleRowSelect = (source: 'bank' | 'ziher' | 'unmatched', id: string, isSelected: boolean) => {
     let entry: TransactionEntry | undefined;
-    // Determine actual source from the combined list if source is 'unmatched'
     if (source === 'unmatched') {
         entry = unmatchedCombinedEntries.find(e => e.id === id);
     } else if (source === 'bank') {
-        entry = bankEntries.find(e => e.id === id); 
+        entry = displayedBankEntries.find(e => e.id === id); 
     } else { 
-        entry = ziherEntries.find(e => e.id === id); 
+        entry = displayedZiherEntries.find(e => e.id === id); 
     }
 
     if (!entry) return;
@@ -361,7 +366,7 @@ export default function ReconcileProPage() {
 
     if (actualSource === 'bank') {
       setSelectedBankEntryIds(prev => isSelected ? [...prev, id] : prev.filter(item => item !== id));
-    } else { // 'ziher'
+    } else { 
       setSelectedZiherEntryIds(prev => isSelected ? [...prev, id] : prev.filter(item => item !== id));
     }
   };
@@ -387,8 +392,8 @@ export default function ReconcileProPage() {
     }
   }, [isProcessing]);
 
-  const displayedBankEntries = searchFilterEntries(filterEntriesByMode(bankEntries, filterMode), searchQuery);
-  const displayedZiherEntries = searchFilterEntries(filterEntriesByMode(ziherEntries, filterMode), searchQuery);
+  const displayedBankEntries = searchFilterEntries(filterEntriesByMode(bankEntries, filterMode), bankSearchQuery);
+  const displayedZiherEntries = searchFilterEntries(filterEntriesByMode(ziherEntries, filterMode), ziherSearchQuery);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -418,10 +423,6 @@ export default function ReconcileProPage() {
               currentFilterMode={filterMode}
               onFilterChange={setFilterMode}
             />
-            <SearchToolbar 
-              searchQuery={searchQuery}
-              onSearchQueryChange={setSearchQuery}
-            />
             <ActionToolbar
               onManualMatch={handleManualMatch}
               onUnmatch={handleUnmatch}
@@ -449,7 +450,17 @@ export default function ReconcileProPage() {
               <TabsTrigger value="bank">Bank</TabsTrigger>
               <TabsTrigger value="ziher">Ziher</TabsTrigger>
             </TabsList>
-            <TabsContent value="unmatched" className="mt-4">
+            <TabsContent value="unmatched" className="mt-4 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Szukaj w niepowiązanych..."
+                  value={unmatchedSearchQuery}
+                  onChange={(e) => setUnmatchedSearchQuery(e.target.value)}
+                  className="w-full pl-10"
+                />
+              </div>
               <TransactionTable
                 title="Niepowiązane Wpisy"
                 entries={unmatchedCombinedEntries} 
@@ -459,7 +470,17 @@ export default function ReconcileProPage() {
                 matchGroups={matchGroups}
               />
             </TabsContent>
-            <TabsContent value="bank" className="mt-4">
+            <TabsContent value="bank" className="mt-4 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Szukaj w banku..."
+                  value={bankSearchQuery}
+                  onChange={(e) => setBankSearchQuery(e.target.value)}
+                  className="w-full pl-10"
+                />
+              </div>
               <TransactionTable
                 title="Wpisy Bankowe"
                 entries={displayedBankEntries}
@@ -469,7 +490,17 @@ export default function ReconcileProPage() {
                 matchGroups={matchGroups}
               />
             </TabsContent>
-            <TabsContent value="ziher" className="mt-4">
+            <TabsContent value="ziher" className="mt-4 space-y-4">
+               <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Szukaj w Ziher..."
+                  value={ziherSearchQuery}
+                  onChange={(e) => setZiherSearchQuery(e.target.value)}
+                  className="w-full pl-10"
+                />
+              </div>
               <TransactionTable
                 title="Wpisy Ziher"
                 entries={displayedZiherEntries}
@@ -527,3 +558,5 @@ export default function ReconcileProPage() {
     </div>
   );
 }
+
+    
