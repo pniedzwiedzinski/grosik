@@ -93,32 +93,23 @@ export const parseCsv = (
 
     try {
       let parsedDate: string | undefined = undefined;
+      const rawDateValue = values[dateIndex]?.trim();
 
-      if (source === 'bank') {
-        const rawDateValue = values[dateIndex]?.trim();
-        if (rawDateValue) {
+      if (rawDateValue) {
+        if (source === 'bank') {
           const parts = rawDateValue.split('.');
           if (parts.length === 3) {
             const day = parts[0];
             const month = parts[1];
             const year = parts[2];
-            // Check if parts are numbers and have expected lengths
             if (day.length === 2 && month.length === 2 && year.length === 4 && 
                 !isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
               parsedDate = `${year}-${month}-${day}`;
-            } else {
-              continue; 
             }
-          } else {
-            continue; 
           }
-        } else {
-            continue;
-        }
-      } else { // source === 'ziher'
-        const rawDateValue = values[dateIndex]?.trim();
-        if (rawDateValue) {
-          if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(rawDateValue)) { // More flexible regex for YYYY-M-D or YYYY-MM-DD
+        } else { // source === 'ziher'
+          // Attempt 1: YYYY-M-D or YYYY-MM-DD
+          if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(rawDateValue)) {
             const dateParts = rawDateValue.split('-');
             if (dateParts.length === 3) {
               const year = parseInt(dateParts[0], 10);
@@ -126,20 +117,35 @@ export const parseCsv = (
               const day = parseInt(dateParts[2], 10);
 
               if (year > 1900 && year < 3000 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-                // Normalize to YYYY-MM-DD
                 parsedDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-              } else {
-                continue; // Invalid date components
               }
-            } else {
-                 continue; // Split did not result in 3 parts
             }
-          } else {
-            continue; // Regex for YYYY-M-D or YYYY-MM-DD failed
           }
-        } else {
-            continue; // Empty date field
+          
+          // Attempt 2: DD.MM.YYYY (if Attempt 1 failed)
+          if (!parsedDate) {
+            const parts = rawDateValue.split('.');
+            if (parts.length === 3) {
+              const day = parts[0];
+              const month = parts[1];
+              const year = parts[2];
+              if (day.length <= 2 && month.length <= 2 && year.length === 4 &&
+                  !isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
+                const parsedYear = parseInt(year, 10);
+                const parsedMonth = parseInt(month, 10);
+                const parsedDay = parseInt(day, 10);
+
+                if (parsedYear > 1900 && parsedYear < 3000 && parsedMonth >= 1 && parsedMonth <= 12 && parsedDay >= 1 && parsedDay <= 31) {
+                   parsedDate = `${parsedYear}-${parsedMonth.toString().padStart(2, '0')}-${parsedDay.toString().padStart(2, '0')}`;
+                }
+              }
+            }
+          }
         }
+      }
+      
+      if (!parsedDate) { // If date couldn't be parsed from any format
+        continue;
       }
       
       let description = '';
@@ -157,7 +163,7 @@ export const parseCsv = (
         let processedIncomeStr = '0';
         if (typeof rawIncomeField === 'string' && rawIncomeField.trim() !== '') {
             processedIncomeStr = rawIncomeField.trim().replace(/\s/g, '').replace(',', '.');
-        } else if (typeof rawIncomeField === 'number') { // Handle if it's already a number
+        } else if (typeof rawIncomeField === 'number') { 
             processedIncomeStr = rawIncomeField.toString().replace(',', '.');
         }
         const incomeValue = parseFloat(processedIncomeStr);
@@ -182,7 +188,7 @@ export const parseCsv = (
         amount = parseFloat(processedAmountStr);
       }
       
-      if (!parsedDate || description === '' || isNaN(amount)) {
+      if (description === '' || isNaN(amount)) { // Date check already happened
         continue;
       }
 
@@ -193,7 +199,7 @@ export const parseCsv = (
         amount,
         source,
         status: 'unmatched',
-        originalRowData: parseCsvLineWithQuotes(lines[i], separator), // Re-parse or store original values for debugging if needed
+        originalRowData: parseCsvLineWithQuotes(lines[i], separator), 
         matchedEntryDetails: [],
       });
     } catch (error: any) {
