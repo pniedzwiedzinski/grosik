@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent } from 'react';
@@ -10,44 +11,44 @@ import { UploadCloud, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FileUploadAreaProps {
-  onFilesProcessed: (bankFile: File | null, bookkeepingFile: File | null) => void;
+  onFilesProcessed: (bankFile: File | null, ziherFile: File | null) => void;
 }
 
 export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
   const [bankFile, setBankFile] = useState<File | null>(null);
-  const [bookkeepingFile, setBookkeepingFile] = useState<File | null>(null);
+  const [ziherFile, setZiherFile] = useState<File | null>(null);
   const { toast } = useToast();
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>, type: 'bank' | 'bookkeeping') => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>, type: 'bank' | 'ziher') => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type !== 'text/csv') {
         toast({
-          title: 'Invalid File Type',
-          description: 'Please upload a CSV file.',
+          title: 'Nieprawidłowy typ pliku',
+          description: 'Proszę przesłać plik CSV.',
           variant: 'destructive',
         });
-        event.target.value = ''; // Reset file input
+        event.target.value = ''; 
         return;
       }
       if (type === 'bank') {
         setBankFile(file);
       } else {
-        setBookkeepingFile(file);
+        setZiherFile(file);
       }
     }
   };
 
   const handleSubmit = () => {
-    if (!bankFile && !bookkeepingFile) {
+    if (!bankFile && !ziherFile) {
       toast({
-        title: 'No Files Selected',
-        description: 'Please upload at least one CSV file to process.',
+        title: 'Nie wybrano plików',
+        description: 'Proszę przesłać co najmniej jeden plik CSV do przetworzenia.',
         variant: 'destructive',
       });
       return;
     }
-    onFilesProcessed(bankFile, bookkeepingFile);
+    onFilesProcessed(bankFile, ziherFile);
   };
 
   const FileInput = ({ id, label, file, onChange }: { id: string, label: string, file: File | null, onChange: (e: ChangeEvent<HTMLInputElement>) => void }) => (
@@ -74,16 +75,16 @@ export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
   return (
     <Card className="mb-6 container mx-auto shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl font-headline">Import Transaction Files</CardTitle>
-        <CardDescription>Upload your bank statement and bookkeeping records in CSV format.</CardDescription>
+        <CardTitle className="text-xl font-headline">Importuj Pliki Transakcji</CardTitle>
+        <CardDescription>Prześlij wyciąg bankowy i zapisy z Ziher w formacie CSV.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <FileInput id="bank-csv" label="Bank Statement CSV" file={bankFile} onChange={(e) => handleFileChange(e, 'bank')} />
-          <FileInput id="bookkeeping-csv" label="Bookkeeping App CSV" file={bookkeepingFile} onChange={(e) => handleFileChange(e, 'bookkeeping')} />
+          <FileInput id="bank-csv" label="Wyciąg Bankowy CSV" file={bankFile} onChange={(e) => handleFileChange(e, 'bank')} />
+          <FileInput id="ziher-csv" label="Plik CSV z Ziher" file={ziherFile} onChange={(e) => handleFileChange(e, 'ziher')} />
         </div>
         <Button onClick={handleSubmit} className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-          Process Files
+          Przetwórz Pliki
         </Button>
       </CardContent>
     </Card>
