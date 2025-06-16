@@ -82,59 +82,76 @@ export default function ReconcileProPage() {
 
     let newBankEntries: TransactionEntry[] = [];
     let newZiherEntries: TransactionEntry[] = [];
+    let successfullyParsedBank = false;
+    let successfullyParsedZiher = false;
 
     try {
       if (bankFile) {
         const bankCsvText = await bankFile.text();
-        await updateProgress(20);
+        await updateProgress(15);
         newBankEntries = parseCsv(bankCsvText, 'bank');
-        setBankEntries(newBankEntries);
-        await updateProgress(40);
-      } else {
-        setBankEntries([]); 
-      }
-
-      if (ziherFile) {
-        const ziherCsvText = await ziherFile.text();
-        await updateProgress(60);
-        newZiherEntries = parseCsv(ziherCsvText, 'ziher');
-        setZiherEntries(newZiherEntries);
-        await updateProgress(80);
-      } else {
-        setZiherEntries([]); 
-      }
-      
-      setSelectedBankEntryIds([]);
-      setSelectedZiherEntryIds([]);
-      setMatchGroups([]);
-      setFilterMode('all');
-
-      let fileProcessedSuccessfully = false;
-      if (bankFile) {
-        if (newBankEntries.length > 0) {
-          fileProcessedSuccessfully = true;
-        } else {
+        successfullyParsedBank = newBankEntries.length > 0;
+        if (bankFile && !successfullyParsedBank) { // Check if file was provided but no entries parsed
           toast({
             title: "Problem z plikiem historii z banku",
             description: `Nie znaleziono wpisów w "${bankFile.name}". Sprawdź format/zawartość pliku.`,
             variant: "destructive",
           });
         }
+        await updateProgress(30);
+      } else {
+        setBankEntries([]); 
       }
+
       if (ziherFile) {
-        if (newZiherEntries.length > 0) {
-          fileProcessedSuccessfully = true;
-        } else {
+        const ziherCsvText = await ziherFile.text();
+        await updateProgress(45);
+        newZiherEntries = parseCsv(ziherCsvText, 'ziher');
+        successfullyParsedZiher = newZiherEntries.length > 0;
+        if (ziherFile && !successfullyParsedZiher) { // Check if file was provided but no entries parsed
           toast({
             title: "Problem z plikiem Ziher",
             description: `Nie znaleziono wpisów w "${ziherFile.name}". Sprawdź format/zawartość pliku.`,
             variant: "destructive",
           });
         }
+        await updateProgress(60);
+      } else {
+        setZiherEntries([]);
       }
+      
+      setSelectedBankEntryIds([]);
+      setSelectedZiherEntryIds([]);
+      setMatchGroups([]); // Reset match groups on new file processing
+      setFilterMode('all');
 
-      if (fileProcessedSuccessfully) {
-         toast({ title: "Pliki przetworzone", description: "Pliki CSV zostały sparsowane." });
+      // Initial state update with parsed entries
+      setBankEntries(newBankEntries);
+      setZiherEntries(newZiherEntries);
+
+      let autoMatchedCount = 0;
+      if (newBankEntries.length > 0 && newZiherEntries.length > 0) {
+        await updateProgress(75); 
+        const { 
+          updatedBankEntries: autoMatchedBank, 
+          updatedZiherEntries: autoMatchedZiher, 
+          newMatches: autoNewMatches 
+        } = autoMatchEntries(newBankEntries, newZiherEntries); 
+        
+        setBankEntries(autoMatchedBank); 
+        setZiherEntries(autoMatchedZiher);
+        setMatchGroups(autoNewMatches); 
+        autoMatchedCount = autoNewMatches.length;
+      }
+      
+      await updateProgress(90);
+
+      if (successfullyParsedBank || successfullyParsedZiher) {
+         let description = "Pliki CSV zostały sparsowane.";
+         if (newBankEntries.length > 0 && newZiherEntries.length > 0) {
+           description += ` Automatycznie powiązano ${autoMatchedCount} wpisów.`;
+         }
+         toast({ title: "Pliki przetworzone", description });
       } else if (!bankFile && !ziherFile) {
          toast({ title: "Nie wybrano plików", description: "Proszę przesłać co najmniej jeden plik CSV.", variant: "destructive" });
       }
@@ -153,35 +170,33 @@ export default function ReconcileProPage() {
     }
   };
 
-  const handleAutoMatch = useCallback(async () => {
-    if (bankEntries.length === 0 || ziherEntries.length === 0) {
-      toast({ title: "Niewystarczające dane", description: "Proszę przesłać pliki z historią z banku i Ziher, aby przeprowadzić automatyczne powiązanie.", variant: "destructive" });
-      return;
-    }
-    setIsProcessing(true);
-    setProgress(0);
-    await updateProgress(30);
-    // Auto-match operates on full, unfiltered lists
-    const { updatedBankEntries, updatedZiherEntries, newMatches } = autoMatchEntries(bankEntries, ziherEntries);
-    await updateProgress(70);
-    setBankEntries(updatedBankEntries);
-    setZiherEntries(updatedZiherEntries);
-    setMatchGroups(prev => [...prev.filter(mg => mg.type === 'manual'), ...newMatches]); 
-    toast({ title: "Automatyczne powiązanie zakończone", description: `Znaleziono ${newMatches.length} nowych automatycznych powiązań.` });
-    await updateProgress(100);
-    setTimeout(() => setIsProcessing(false), 500);
-  }, [bankEntries, ziherEntries, toast]);
-
   const handleManualMatch = useCallback(async () => {
     setIsProcessing(true);
     setProgress(0);
     await updateProgress(30);
-    // Manual match operates on full, unfiltered lists using selected IDs
+
+    const bankEntriesToMatch = bankEntries.filter(e => selectedBankEntryIds.includes(e.id));
+    const ziherEntriesToMatch = ziherEntries.filter(e => selectedZiherEntryIds.includes(e.id));
+
+    if (bankEntriesToMatch.length === 0 || ziherEntriesToMatch.length === 0 ||
+        !bankEntriesToMatch.every(e => e.status === 'unmatched') ||
+        !ziherEntriesToMatch.every(e => e.status === 'unmatched')) {
+      toast({ 
+         title: "Ręczne powiązanie nie powiodło się", 
+         description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł (Bank i Ziher), nie są puste i wszystkie są 'niepowiązane'.", 
+         variant: "destructive"
+       });
+      setIsProcessing(false);
+      setProgress(100);
+      setTimeout(() => setIsProcessing(false), 500);
+      return;
+    }
+    
     const { updatedBankEntries, updatedZiherEntries, newMatch } = manuallyMatchEntries(
       selectedBankEntryIds,
       selectedZiherEntryIds,
-      bankEntries,
-      ziherEntries
+      bankEntries, // Pass full current bankEntries
+      ziherEntries  // Pass full current ziherEntries
     );
     await updateProgress(70);
     setBankEntries(updatedBankEntries);
@@ -189,13 +204,15 @@ export default function ReconcileProPage() {
     if (newMatch) {
       setMatchGroups(prev => [...prev, newMatch]);
       toast({ title: "Ręczne powiązanie zakończone sukcesem", description: "Wybrane wpisy zostały powiązane." });
-    } else {
-       toast({ 
-         title: "Ręczne powiązanie nie powiodło się", 
-         description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niepowiązane'.", 
-         variant: "destructive"
-       });
     }
+    // This 'else' part is now covered by the initial check
+    // else {
+    //    toast({ 
+    //      title: "Ręczne powiązanie nie powiodło się", 
+    //      description: "Nie można powiązać. Upewnij się, że wybrane wpisy pochodzą z różnych źródeł i wszystkie są 'niepowiązane'.", 
+    //      variant: "destructive"
+    //    });
+    // }
     setSelectedBankEntryIds([]);
     setSelectedZiherEntryIds([]);
     
@@ -208,7 +225,6 @@ export default function ReconcileProPage() {
     setProgress(0);
     await updateProgress(20);
     const matchIdsToUnmatch = new Set<string>();
-    // Use full lists to find entries by ID
     [...selectedBankEntryIds, ...selectedZiherEntryIds].forEach(id => {
       const bankEntry = bankEntries.find(e => e.id === id);
       if (bankEntry?.matchId) matchIdsToUnmatch.add(bankEntry.matchId);
@@ -259,15 +275,13 @@ export default function ReconcileProPage() {
   }, [toast]);
 
   const handleRowSelect = (source: 'bank' | 'ziher' | 'unmatched', id: string, isSelected: boolean) => {
-    // Find entry in the *filtered* lists if it's from 'unmatched'
-    // or from the original lists if from 'bank' or 'ziher' tab, then get its true source
     let entry: TransactionEntry | undefined;
     if (source === 'unmatched') {
         entry = unmatchedCombinedEntries.find(e => e.id === id);
     } else if (source === 'bank') {
-        entry = bankEntries.find(e => e.id === id); // Original list for ID consistency
-    } else { // source === 'ziher'
-        entry = ziherEntries.find(e => e.id === id); // Original list
+        entry = bankEntries.find(e => e.id === id); 
+    } else { 
+        entry = ziherEntries.find(e => e.id === id); 
     }
 
     if (!entry) return;
@@ -292,7 +306,6 @@ export default function ReconcileProPage() {
     const ziherEntry = ziherEntries.find(e => e.id === id && e.status === 'matched');
     return bankEntry || ziherEntry;
   });
-  const canAutoMatch = bankEntries.length > 0 && ziherEntries.length > 0 && (bankEntries.some(e => e.status === 'unmatched') || ziherEntries.some(e => e.status === 'unmatched'));
 
   const showFileUpload = bankEntries.length === 0 && ziherEntries.length === 0;
   const showTransactionData = bankEntries.length > 0 || ziherEntries.length > 0;
@@ -325,11 +338,9 @@ export default function ReconcileProPage() {
               onFilterChange={setFilterMode}
             />
             <ActionToolbar
-              onAutoMatch={handleAutoMatch}
               onManualMatch={handleManualMatch}
               onUnmatch={handleUnmatch}
               onReset={handleReset}
-              canAutoMatch={canAutoMatch}
               canManualMatch={canManualMatch}
               canUnmatch={canUnmatch}
               isProcessing={isProcessing}
@@ -357,7 +368,7 @@ export default function ReconcileProPage() {
             <TabsContent value="unmatched" className="mt-4">
               <TransactionTable
                 title="Niepowiązane Wpisy"
-                entries={unmatchedCombinedEntries} // Already filtered
+                entries={unmatchedCombinedEntries} 
                 selectedIds={[...selectedBankEntryIds, ...selectedZiherEntryIds]} 
                 onRowSelect={(id, isSelected) => handleRowSelect('unmatched', id, isSelected)}
                 isProcessing={isProcessing}

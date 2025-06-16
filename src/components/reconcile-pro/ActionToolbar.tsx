@@ -2,26 +2,22 @@
 "use client";
 
 import { Button } from '@/components/ui/button';
-import { Wand2, Link2, Link2Off, RefreshCw } from 'lucide-react';
+import { Link2, Link2Off, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ActionToolbarProps {
-  onAutoMatch: () => void;
   onManualMatch: () => void;
   onUnmatch: () => void;
   onReset: () => void;
-  canAutoMatch: boolean;
   canManualMatch: boolean;
   canUnmatch: boolean;
   isProcessing: boolean;
 }
 
 export function ActionToolbar({
-  onAutoMatch,
   onManualMatch,
   onUnmatch,
   onReset,
-  canAutoMatch,
   canManualMatch,
   canUnmatch,
   isProcessing,
@@ -29,15 +25,6 @@ export function ActionToolbar({
   return (
     <Card className="mb-6 container mx-auto shadow-md">
       <CardContent className="p-4 flex flex-wrap items-center justify-start gap-2 md:gap-4">
-        <Button
-          onClick={onAutoMatch}
-          disabled={!canAutoMatch || isProcessing}
-          variant="outline"
-          className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
-        >
-          <Wand2 className="mr-2 h-4 w-4" />
-          Powiąż Automatycznie
-        </Button>
         <Button
           onClick={onManualMatch}
           disabled={!canManualMatch || isProcessing}
