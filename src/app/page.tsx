@@ -94,7 +94,7 @@ export default function ReconcileProPage() {
           fileProcessedSuccessfully = true;
         } else {
           toast({
-            title: "Problem z plikiem bankowym",
+            title: "Problem z plikiem historii z banku",
             description: `Nie znaleziono wpisów w "${bankFile.name}". Sprawdź format/zawartość pliku.`,
             variant: "destructive",
           });
@@ -134,7 +134,7 @@ export default function ReconcileProPage() {
 
   const handleAutoMatch = useCallback(async () => {
     if (bankEntries.length === 0 || ziherEntries.length === 0) {
-      toast({ title: "Niewystarczające dane", description: "Proszę przesłać pliki bankowe i Ziher, aby przeprowadzić automatyczne uzgadnianie.", variant: "destructive" });
+      toast({ title: "Niewystarczające dane", description: "Proszę przesłać pliki z historią z banku i Ziher, aby przeprowadzić automatyczne uzgadnianie.", variant: "destructive" });
       return;
     }
     setIsProcessing(true);
@@ -306,7 +306,7 @@ export default function ReconcileProPage() {
             <FileWarning className="h-4 w-4" />
             <AlertTitle>Rozpocznij</AlertTitle>
             <AlertDescription>
-              Prześlij wyciąg bankowy i pliki CSV z Ziher powyżej, aby rozpocząć uzgadnianie transakcji.
+              Prześlij historię z banku i pliki CSV z Ziher powyżej, aby rozpocząć uzgadnianie transakcji.
             </AlertDescription>
           </Alert>
         )}
@@ -354,3 +354,4 @@ export default function ReconcileProPage() {
     </div>
   );
 }
+

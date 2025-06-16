@@ -76,11 +76,11 @@ export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
     <Card className="mb-6 container mx-auto shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl font-headline">Importuj Pliki Transakcji</CardTitle>
-        <CardDescription>Prześlij wyciąg bankowy i zapisy z Ziher w formacie CSV.</CardDescription>
+        <CardDescription>Prześlij historię z banku i zapisy z Ziher w formacie CSV.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <FileInput id="bank-csv" label="Wyciąg Bankowy CSV" file={bankFile} onChange={(e) => handleFileChange(e, 'bank')} />
+          <FileInput id="bank-csv" label="Historia z banku CSV" file={bankFile} onChange={(e) => handleFileChange(e, 'bank')} />
           <FileInput id="ziher-csv" label="Plik CSV z Ziher" file={ziherFile} onChange={(e) => handleFileChange(e, 'ziher')} />
         </div>
         <Button onClick={handleSubmit} className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -90,3 +90,4 @@ export function FileUploadArea({ onFilesProcessed }: FileUploadAreaProps) {
     </Card>
   );
 }
+
