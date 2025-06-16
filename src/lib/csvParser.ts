@@ -1,3 +1,4 @@
+
 import type { TransactionEntry } from '@/types/reconciliation';
 
 export const parseCsv = (
@@ -7,62 +8,101 @@ export const parseCsv = (
   const lines = csvString.trim().split('\n');
   if (lines.length === 0) return [];
 
-  // Attempt to sniff headers, or assume a fixed format
-  // For simplicity, assuming: Date, Description, Amount
-  // A more robust solution would allow header mapping or use a library.
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const dateIndex = headers.findIndex(h => h.includes('date'));
-  const descriptionIndex = headers.findIndex(h => h.includes('description') || h.includes('narrative') || h.includes('details'));
-  const amountIndex = headers.findIndex(h => h.includes('amount') || h.includes('value'));
-  const debitIndex = headers.findIndex(h => h.includes('debit'));
-  const creditIndex = headers.findIndex(h => h.includes('credit'));
+  const separator = source === 'bookkeeping' ? '\t' : ',';
+  // Remove quotes and convert to lowercase for robust matching
+  const rawHeaders = lines[0].split(separator).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
 
+  let dateIndex = -1;
+  let descriptionPart1Index = -1; // 'Opis' for bookkeeping, 'Tytuł' for bank
+  let descriptionPart2Index = -1; // 'Numer dokumentu' for bookkeeping
+  
+  let amountIndex = -1; // 'Kwota' for bank
+  let incomeIndex = -1; // 'Wpływy razem' for bookkeeping
+  let expenseIndex = -1; // 'Wydatki razem' for bookkeeping
 
-  if (dateIndex === -1 || descriptionIndex === -1 || (amountIndex === -1 && (debitIndex === -1 || creditIndex === -1))) {
-    console.error('CSV headers not recognized. Expected columns like Date, Description, Amount or Date, Description, Debit, Credit.');
-    // Fallback to fixed positions if headers are not as expected
-    // This is a very basic fallback and might not be accurate
-    // Date = 0, Description = 1, Amount = 2
-    // return parseWithFixedPositions(lines, source);
-    throw new Error('CSV headers not recognized. Ensure columns for Date, Description, and Amount (or Debit/Credit) are present.');
+  if (source === 'bookkeeping') {
+    dateIndex = rawHeaders.findIndex(h => h === 'data');
+    descriptionPart1Index = rawHeaders.findIndex(h => h === 'opis');
+    descriptionPart2Index = rawHeaders.findIndex(h => h === 'numer dokumentu');
+    incomeIndex = rawHeaders.findIndex(h => h === 'wpływy razem');
+    expenseIndex = rawHeaders.findIndex(h => h === 'wydatki razem');
+
+    if (dateIndex === -1 || descriptionPart1Index === -1 || descriptionPart2Index === -1 || incomeIndex === -1 || expenseIndex === -1) {
+      throw new Error(
+        `Bookkeeping CSV headers not recognized. Expected: "Data", "Opis", "Numer dokumentu", "Wpływy razem", "Wydatki razem". Found: ${lines[0].split(separator).map(h => h.trim()).join(', ')}`
+      );
+    }
+  } else { // source === 'bank'
+    dateIndex = rawHeaders.findIndex(h => h === 'zaksięgowano');
+    descriptionPart1Index = rawHeaders.findIndex(h => h === 'tytuł');
+    amountIndex = rawHeaders.findIndex(h => h === 'kwota');
+
+    if (dateIndex === -1 || descriptionPart1Index === -1 || amountIndex === -1) {
+      throw new Error(
+        `Bank CSV headers not recognized. Expected: "Zaksięgowano", "Tytuł", "Kwota". Found: ${lines[0].split(separator).map(h => h.trim()).join(', ')}`
+      );
+    }
   }
   
   const entries: TransactionEntry[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(','); // Basic split, doesn't handle commas in fields
-    if (values.length < Math.max(dateIndex, descriptionIndex, amountIndex, debitIndex, creditIndex) + 1) continue;
+    // Remove quotes from individual values
+    const values = lines[i].split(separator).map(v => v.trim().replace(/^"|"$/g, ''));
+
+    const maxRequiredIndex = Math.max(
+      dateIndex, 
+      descriptionPart1Index, 
+      descriptionPart2Index, 
+      amountIndex, 
+      incomeIndex, 
+      expenseIndex
+    );
+    if (values.length <= maxRequiredIndex) {
+        // console.warn(`Skipping row with insufficient columns: ${lines[i]}`);
+        continue;
+    }
 
     try {
       const date = values[dateIndex]?.trim() || '';
-      const description = values[descriptionIndex]?.trim() || '';
-      let amount: number;
+      
+      let description = '';
+      if (source === 'bookkeeping') {
+        const opis = values[descriptionPart1Index]?.trim() || '';
+        const numerDokumentu = values[descriptionPart2Index]?.trim() || '';
+        description = `${opis} ${numerDokumentu}`.trim();
+      } else { // bank
+        description = values[descriptionPart1Index]?.trim() || '';
+      }
 
-      if (amountIndex !== -1) {
-        amount = parseFloat(values[amountIndex]?.trim() || '0');
-      } else if (debitIndex !== -1 && creditIndex !== -1) {
-        const debit = parseFloat(values[debitIndex]?.trim() || '0');
-        const credit = parseFloat(values[creditIndex]?.trim() || '0');
-        amount = credit - debit; // Common convention: credit is positive, debit is negative
-      } else {
-        throw new Error('Amount columns (Amount or Debit/Credit) not found or incomplete.');
+      let amount: number;
+      if (source === 'bookkeeping') {
+        // Replace comma with dot for decimal, then parse
+        const incomeValueStr = values[incomeIndex]?.trim().replace(',', '.') || '0';
+        const expenseValueStr = values[expenseIndex]?.trim().replace(',', '.') || '0';
+        const incomeValue = parseFloat(incomeValueStr);
+        const expenseValue = parseFloat(expenseValueStr);
+        amount = incomeValue - expenseValue; 
+      } else { // bank
+        const amountStr = values[amountIndex]?.trim().replace(',', '.') || '0';
+        amount = parseFloat(amountStr);
       }
       
-      if (!date || isNaN(amount)) {
-        console.warn(`Skipping row due to invalid data: ${lines[i]}`);
+      if (!date || description === '' || isNaN(amount)) {
+        // console.warn(`Skipping row due to invalid or missing critical data: Date='${date}', Desc='${description}', Amount='${amount}' from line: ${lines[i]}`);
         continue;
       }
 
       entries.push({
-        id: `${source}-${crypto.randomUUID()}`, // Client-side unique ID
+        id: `${source}-${crypto.randomUUID()}`,
         date,
         description,
         amount,
         source,
         status: 'unmatched',
-        originalRowData: values.map(v => v.trim()),
+        originalRowData: lines[i].split(separator).map(v => v.trim()), // Store original, non-processed values
       });
-    } catch (error) {
-      console.error(`Error parsing row: ${lines[i]}`, error);
+    } catch (error: any) {
+      console.error(`Error parsing row: ${lines[i]}. Error: ${error.message}`);
     }
   }
   return entries;
