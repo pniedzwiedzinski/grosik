@@ -26,14 +26,18 @@ export function BalanceSummary({ bankTotal, ziherTotal, difference }: BalanceSum
             <Banknote className="w-4 h-4 mr-2 text-primary" />
             Suma Bank
           </div>
-          <p className="text-2xl font-semibold text-foreground">{formatCurrency(bankTotal)}</p>
+          <p className={`text-2xl font-semibold ${bankTotal === 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
+            {formatCurrency(bankTotal)}
+          </p>
         </div>
         <div className="flex flex-col p-4 bg-card rounded-lg shadow-sm border border-border">
           <div className="flex items-center text-sm text-muted-foreground mb-1">
             <BookOpenText className="w-4 h-4 mr-2 text-primary" />
             Suma Ziher
           </div>
-          <p className="text-2xl font-semibold text-foreground">{formatCurrency(ziherTotal)}</p>
+          <p className={`text-2xl font-semibold ${ziherTotal === 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
+            {formatCurrency(ziherTotal)}
+          </p>
         </div>
         <div className="flex flex-col p-4 bg-card rounded-lg shadow-sm border border-border">
           <div className="flex items-center text-sm text-muted-foreground mb-1">
