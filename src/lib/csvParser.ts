@@ -33,7 +33,7 @@ export const parseCsv = (
       );
     }
   } else { // source === 'bank'
-    dateIndex = rawHeaders.findIndex(h => h === 'zaksięgowano');
+    dateIndex = rawHeaders.findIndex(h => h === 'zaksięgowano'); // Corrected to lowercase
     descriptionPart1Index = rawHeaders.findIndex(h => h === 'tytuł');
     amountIndex = rawHeaders.findIndex(h => h === 'kwota');
 
@@ -57,8 +57,12 @@ export const parseCsv = (
       incomeIndex, 
       expenseIndex
     );
-    if (values.length <= maxRequiredIndex) {
-        // console.warn(`Skipping row with insufficient columns: ${lines[i]}`);
+    // Ensure all necessary columns are present based on their found indices
+    if (values.length <= maxRequiredIndex || 
+        (source === 'bank' && (dateIndex === -1 || descriptionPart1Index === -1 || amountIndex === -1)) ||
+        (source === 'bookkeeping' && (dateIndex === -1 || descriptionPart1Index === -1 || descriptionPart2Index === -1 || incomeIndex === -1 || expenseIndex === -1))) {
+        // This condition is technically covered by the header check, but as a safeguard for row processing:
+        // console.warn(`Skipping row with insufficient columns or headers not found: ${lines[i]}`);
         continue;
     }
 
