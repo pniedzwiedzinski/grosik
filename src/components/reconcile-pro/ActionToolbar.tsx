@@ -66,7 +66,7 @@ export function ActionToolbar({
             variant="outline"
             size="sm"
           >
-            <XCircle className="mr-2 h-4 w-4" /> 
+            <XCircle className="mr-2 h-4 w-4" />
             Odznacz wszystkie ({totalSelectedCount})
           </Button>
           {totalSelectedCount > 0 && (
@@ -94,7 +94,7 @@ export function ActionToolbar({
             size="sm"
           >
             <Link2 className="mr-2 h-4 w-4" />
-            Dopasuj Wybrane Ręcznie
+            Połącz transakcje
           </Button>
           <Button
             onClick={onUnmatch}
